@@ -1,0 +1,93 @@
+
+_rand_seed = 1;
+random = function(){
+	_rand_seed = _rand_seed*_rand_seed*31245147+_rand_seed*5161231+194124391;
+	local x = 0;
+	x = _rand_seed-_rand_seed/65536*65536;
+	if (x<0) x = -x;
+	return x<32768;
+};
+
+outer_x = 64;
+inner_x = outer_x - 2;
+outer_y = 32;
+inner_y = outer_y - 2;
+map = repeat(b"0", outer_x*outer_y);
+buffer = " "*inner_x;
+screen = array(inner_y);
+chars = array(9);
+
+
+loop(y = 12, y<inner_y-12, y=y+1){
+	loop(x=24, x<inner_x-24, x=x+1){
+		set(map,x+(y+1)*outer_x+1,random());
+	}
+}
+
+loop{
+	loop(y=0, y<inner_y, y=y+1){
+		local line_offs = 0;
+		line_offs = outer_x*(y+1)+1;
+		loop(x=0, x<inner_x, x=x+1){
+			local count = 0;
+			local t0=t1=t2=0;
+			t0 = line_offs+x;
+			count = count + integer(get(map,t0));
+			if (count == 1)
+			{			
+				
+				count = count + integer(get(map,t0+1));
+				count = count + integer(get(map,t0-1));
+				
+				t1 = t0 - outer_x;
+				count = count + integer(get(map,t1));
+				count = count + integer(get(map,t1+1));
+				count = count + integer(get(map,t1-1));
+				
+				t2 = t0 + outer_x;
+				count = count + integer(get(map,t2));
+				count = count + integer(get(map,t2+1));
+				count = count + integer(get(map,t2-1));
+				
+				if(count<3){
+					set(map,line_offs+x,bit(0));
+					set(buffer,x,46);
+				} else if (count>4)	{
+					set(map,line_offs+x,bit(0));
+					set(buffer,x,46);
+				} else {
+					set(map,line_offs+x,bit(1));
+					set(buffer,x,35);
+				}
+			}
+			else
+			{
+				count = count + integer(get(map,t0+1));
+				count = count + integer(get(map,t0-1));
+				
+				t1 = t0 - outer_x;
+				count = count + integer(get(map,t1));
+				count = count + integer(get(map,t1+1));
+				count = count + integer(get(map,t1-1));
+				
+				t2 = t0 + outer_x;
+				count = count + integer(get(map,t2));
+				count = count + integer(get(map,t2+1));
+				count = count + integer(get(map,t2-1));
+				
+				if (count ==3){
+					set(map,line_offs+x,bit(1));
+					set(buffer,x,43);
+				} else { 
+					set(buffer,x,32);
+				}
+			}
+		}
+		set(screen,y,head(buffer,length(buffer)));
+	}
+	system("cls");
+	loop(i=0, i<length(screen), i=i+1){
+		view(get(screen,i));
+	}
+	
+}
