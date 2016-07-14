@@ -13,14 +13,20 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\Generated">
-      <UniqueIdentifier>{59322934-467d-423f-8a7b-8da38b1e1cd2}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Test Files">
       <UniqueIdentifier>{2ff9bab7-7746-4929-84bb-3cf10263563e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\CustomBuild">
+    <Filter Include="Header Files\Compiler">
+      <UniqueIdentifier>{67af6eef-1a6e-4908-8c7a-de1b63eb1a29}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Compiler">
+      <UniqueIdentifier>{08e62967-3daf-40e5-9b0c-2eb4f46dce09}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Compiler\CustomBuild">
       <UniqueIdentifier>{57da175a-2c3f-4c5a-94a0-93668d0706ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Compiler\Generated">
+      <UniqueIdentifier>{59322934-467d-423f-8a7b-8da38b1e1cd2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -30,21 +36,21 @@
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="lexer.l">
-      <Filter>Source Files\CustomBuild</Filter>
+      <Filter>Source Files\Compiler\CustomBuild</Filter>
     </CustomBuild>
     <CustomBuild Include="parser.y">
-      <Filter>Source Files\CustomBuild</Filter>
+      <Filter>Source Files\Compiler\CustomBuild</Filter>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="lexer.cpp">
-      <Filter>Source Files\Generated</Filter>
+      <Filter>Source Files\Compiler\Generated</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="parser.cpp">
-      <Filter>Source Files\Generated</Filter>
+      <Filter>Source Files\Compiler\Generated</Filter>
     </ClCompile>
     <ClCompile Include="yyerror.cpp">
       <Filter>Source Files</Filter>
@@ -64,13 +70,16 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="parser.hpp">
-      <Filter>Source Files\Generated</Filter>
+      <Filter>Source Files\Compiler\Generated</Filter>
     </ClInclude>
     <ClInclude Include="exec.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="yyerror.hpp">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Compiler.hpp">
+      <Filter>Header Files\Compiler</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

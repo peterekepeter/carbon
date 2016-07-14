@@ -3,5 +3,5 @@
 #include <cstdio>
 
 void yyerror(const char* message) {
-	std::fprintf(stderr, "%s at line %d near %s\n", message, yylineno, yytext);
+	std::fprintf(stderr, "Compiler: %s at line %d near '%s'\n", message, yylineno, yytext);
 }

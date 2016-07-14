@@ -107,6 +107,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="exec.hpp" />
+    <ClInclude Include="Compiler.hpp" />
     <ClInclude Include="yyerror.hpp" />
     <ClInclude Include="lexer.hpp" />
     <ClInclude Include="parser.hpp" />
