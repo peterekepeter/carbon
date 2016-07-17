@@ -1,5 +1,4 @@
 #include "exec.hpp"
-#include "yyerror.hpp"
 
 #include <cstdio>
 #include <string>
@@ -26,17 +25,17 @@ namespace exec {
 		NODE_CONTINUE,
 		NODE_BREAK,
 		NODE_RETURN,
-		ATOM,
-		COMMAND,
+		NODE_ATOM,
+		NODE_COMMAND,
 		//objects
-		INTEGER,
-		FLOAT,
-		STRING,
-		BIT,
-		BITS,
-		FUNCTION,
-		ARRAY,
-		OBJECT,
+		NODE_INTEGER,
+		NODE_FLOAT,
+		NODE_STRING,
+		NODE_BIT,
+		NODE_BITS,
+		NODE_FUNCTION,
+		NODE_ARRAY,
+		NODE_OBJECT,
 	};
 
 	const char* GetTypeText(NODETYPE nodetype);
@@ -44,11 +43,11 @@ namespace exec {
 	class Node {
 	public:
 		inline bool IsAtom() {
-			return NodeType == NODETYPE::ATOM;
+			return NodeType == NODETYPE::NODE_ATOM;
 		}
 
 		inline bool IsCommand() {
-			return NodeType == NODETYPE::COMMAND;
+			return NodeType == NODETYPE::NODE_COMMAND;
 		}
 
 		inline NODETYPE GetNodeType() {
@@ -56,8 +55,8 @@ namespace exec {
 		}
 
 		virtual const char* GetText(); //get a description to help debug
-		virtual COMMANDTYPE GetCommandType();
-		virtual yytokentype GetAtomType();
+		virtual InstructionType GetCommandType();
+		virtual InstructionType GetAtomType();
 		virtual const char* GetAtomText(); //get parsed text    
 		Node(const NODETYPE);
 	protected:
@@ -66,11 +65,11 @@ namespace exec {
 
 	class NodeAtom : public Node {
 	public:
-		yytokentype AtomType;
+		InstructionType AtomType;
 		std::string AtomText;
-		NodeAtom(const yytokentype type, const char* text);
+		NodeAtom(const InstructionType type, const char* text);
 		override const char* GetText();
-		override yytokentype GetAtomType();
+		override InstructionType GetAtomType();
 		override const char* GetAtomText(); //get parsed text
 	};
 
@@ -116,13 +115,13 @@ namespace exec {
 		return "binseq";
 	}
 
-	NodeBits::NodeBits():Node(NODETYPE::BITS) {}
+	NodeBits::NodeBits():Node(NODETYPE::NODE_BITS) {}
 
-	NodeBits::NodeBits(const binseq::bit_sequence& b):Node(NODETYPE::BITS) {
+	NodeBits::NodeBits(const binseq::bit_sequence& b):Node(NODETYPE::NODE_BITS) {
 		Value = b;
 	}
 
-	NodeBits::NodeBits(binseq::bit_sequence&& b):Node(NODETYPE::BITS) {
+	NodeBits::NodeBits(binseq::bit_sequence&& b):Node(NODETYPE::NODE_BITS) {
 		Value = b;
 	}
 
@@ -140,17 +139,17 @@ namespace exec {
 		return "array";
 	}
 
-	NodeArray::NodeArray(int size):Node(NODETYPE::ARRAY) {
+	NodeArray::NodeArray(int size):Node(NODETYPE::NODE_ARRAY) {
 		Vector.resize(size);
 	}
 
-	NodeArray::NodeArray():Node(NODETYPE::ARRAY) { }
+	NodeArray::NodeArray():Node(NODETYPE::NODE_ARRAY) { }
 
-	NodeArray::NodeArray(const std::vector<std::shared_ptr<Node>>& vec):Node(NODETYPE::ARRAY) {
+	NodeArray::NodeArray(const std::vector<std::shared_ptr<Node>>& vec):Node(NODETYPE::NODE_ARRAY) {
 		Vector = vec;
 	};
 
-	NodeArray::NodeArray(std::vector<std::shared_ptr<Node>>&& vec):Node(NODETYPE::ARRAY) {
+	NodeArray::NodeArray(std::vector<std::shared_ptr<Node>>&& vec):Node(NODETYPE::NODE_ARRAY) {
 		Vector = vec;
 	};
 
@@ -165,7 +164,7 @@ namespace exec {
 		return "object";
 	}
 
-	NodeObject::NodeObject():Node(NODETYPE::OBJECT) {};
+	NodeObject::NodeObject():Node(NODETYPE::NODE_OBJECT) {};
 
 	class NodeBit : public Node {
 	public:
@@ -184,11 +183,11 @@ namespace exec {
 
 	class NodeCommand : public Node {
 	public:
-		COMMANDTYPE CommandType;
+		InstructionType CommandType;
 		std::vector<std::shared_ptr<Node>> Children;
-		NodeCommand(const COMMANDTYPE);
+		NodeCommand(const InstructionType);
 		override const char* GetText();
-		override COMMANDTYPE GetCommandType();
+		override InstructionType GetCommandType();
 		bool DoesPushStack;
 		bool IsPure;
 	};
@@ -250,21 +249,28 @@ namespace exec {
 		inline std::shared_ptr<Node> Error(std::string message);
 	};
 
+	// generic execution context exception, this should be the base for all execution exceptions
 	class Exception {
 	public:
 		const char* Message;
-
 		Exception(const char* message) : Message(message) {};
 	};
 
-	class ImplementationError : public Exception {
+	// exception due to incomplete implementation of the executor
+	class ImplementationException : public Exception {
 	public:
-		ImplementationError(const char* message) : Exception(message) {};
+		ImplementationException(const char* message) : Exception(message) {};
+	};
+
+	// exception occured during the runtime of the interpreted language
+	class RuntimeException : public Exception	{
+	public:
+		RuntimeException(const char* message) : Exception(message) {};
 	};
 
 	Executor::Executor() {
 		this->imp = new ExecutorImp;
-		this->SetShowPrompt(false);
+		this->SetInteractiveMode(false);
 		this->imp->VERBOSE_SUBMIT = false;
 		this->imp->VERBOSE_TREE = false;
 	}
@@ -335,18 +341,18 @@ namespace exec {
 		return bs;
 	}
 
-	void Executor::submitAtom(const yytokentype type, const char* text) {
+	void Executor::WriteInstruction(InstructionType type, const char* text) {
 		switch (type) {
-			case yytokentype::NUM:
+			case InstructionType::NUM:
 				imp->stack.push(std::make_shared<NodeInteger>(atol(text)));
 				break;
-			case yytokentype::FLOAT:
+			case InstructionType::FLOAT:
 				imp->stack.push(std::make_shared<NodeFloat>(atof(text)));
 				break;
-			case yytokentype::STR:
+			case InstructionType::STR:
 				imp->stack.push(std::make_shared<NodeString>(ParseEscapedString(text)));
 				break;
-			case yytokentype::BSTR:
+			case InstructionType::BSTR:
 				imp->stack.push(std::make_shared<NodeBits>(ParseBSTR(text)));
 				break;
 			default:
@@ -369,37 +375,37 @@ namespace exec {
 		}
 	}
 
-	void Executor::submitCommand(const COMMANDTYPE cmd) {
+	void Executor::WriteInstruction(InstructionType cmd) {
 		//transform into tree
 		auto node = std::make_shared<NodeCommand>(cmd);
 		if (imp->VERBOSE_SUBMIT)
 			printf("CMD %s\n", node->GetText());
 		switch (cmd) {
-			case COMMANDTYPE::ASSIGN:
-			case COMMANDTYPE::ADD:
-			case COMMANDTYPE::SUBTRACT:
-			case COMMANDTYPE::MULTIPLY:
-			case COMMANDTYPE::DIVIDE:
-			case COMMANDTYPE::COMP_EQ:
-			case COMMANDTYPE::COMP_NE:
-			case COMMANDTYPE::COMP_GE:
-			case COMMANDTYPE::COMP_LE:
-			case COMMANDTYPE::COMP_GT:
-			case COMMANDTYPE::COMP_LT:
+			case InstructionType::ASSIGN:
+			case InstructionType::ADD:
+			case InstructionType::SUBTRACT:
+			case InstructionType::MULTIPLY:
+			case InstructionType::DIVIDE:
+			case InstructionType::COMP_EQ:
+			case InstructionType::COMP_NE:
+			case InstructionType::COMP_GE:
+			case InstructionType::COMP_LE:
+			case InstructionType::COMP_GT:
+			case InstructionType::COMP_LT:
 				// infix operators
 				node->Children.resize(2);
 				node->Children[1] = imp->ReplaceIdIfPossible(imp->stack.top());
 				imp->stack.pop();
-				node->Children[0] = (cmd == COMMANDTYPE::ASSIGN) ?
+				node->Children[0] = (cmd == InstructionType::ASSIGN) ?
 					                    imp->stack.top() : imp->ReplaceIdIfPossible(imp->stack.top());
 				imp->stack.pop();
 				imp->stack.push(imp->OptimizeIfPossible(node));
 				break;
-			case COMMANDTYPE::CONTROL:
+			case InstructionType::CONTROL:
 				//imp->ControlLevel++;
 				imp->SymbolTable.Push();
 				break;
-			case COMMANDTYPE::LOOP3:
+			case InstructionType::LOOP3:
 				node->DoesPushStack = true;
 				node->Children.resize(4);
 				node->Children[3] = imp->stack.top();
@@ -416,7 +422,7 @@ namespace exec {
 				goto end_statement;
 				break;
 				break;
-			case COMMANDTYPE::LOOP2:
+			case InstructionType::LOOP2:
 				node->DoesPushStack = true;
 				node->Children.resize(3);
 				node->Children[2] = imp->stack.top();
@@ -430,7 +436,7 @@ namespace exec {
 				imp->SymbolTable.Pop();
 				goto end_statement;
 				break;
-			case COMMANDTYPE::LOOP0:
+			case InstructionType::LOOP0:
 				node->DoesPushStack = true;
 				node->Children.resize(1);
 				node->Children[0] = imp->stack.top();
@@ -440,8 +446,8 @@ namespace exec {
 				imp->SymbolTable.Pop();
 				goto end_statement;
 				break;
-			case COMMANDTYPE::LOOP1:
-			case COMMANDTYPE::IF:
+			case InstructionType::LOOP1:
+			case InstructionType::IF:
 				node->DoesPushStack = true;
 				node->Children.resize(2);
 				node->Children[1] = imp->stack.top();
@@ -453,7 +459,7 @@ namespace exec {
 				imp->SymbolTable.Pop();
 				goto end_statement;
 				break;
-			case COMMANDTYPE::IFELSE:
+			case InstructionType::IFELSE:
 				node->DoesPushStack = true;
 				node->Children.resize(3);
 				node->Children[2] = imp->stack.top();
@@ -467,7 +473,7 @@ namespace exec {
 				imp->SymbolTable.Pop();
 				goto end_statement;
 				break;
-			case COMMANDTYPE::FUNCTIONEND: {
+			case InstructionType::FUNCTIONEND: {
 				auto fimpl = imp->stack.top();
 				imp->stack.pop();
 				std::stack<std::string> pstack;
@@ -479,7 +485,7 @@ namespace exec {
 						pstack.push(atom.AtomText);
 					} else if (top->IsCommand()) {
 						auto& cmd = reinterpret_cast<NodeCommand&>(*top);
-						if (cmd.CommandType == COMMANDTYPE::FUNCTIONBEGIN) {
+						if (cmd.CommandType == InstructionType::FUNCTIONBEGIN) {
 							std::vector<std::string> plist;
 							while (!pstack.empty()) {
 								plist.push_back(pstack.top());
@@ -487,33 +493,33 @@ namespace exec {
 							}
 							imp->stack.push(std::make_shared<NodeFunction>(plist, fimpl));
 							break;
-						} else throw ImplementationError("invalid");
-					} else throw ImplementationError("invalid");
+						} else throw ImplementationException("invalid");
+					} else throw ImplementationException("invalid");
 				}
 			}
 				imp->SymbolTable.Pop();
 				break;
-			case COMMANDTYPE::FUNCTIONBEGIN:
+			case InstructionType::FUNCTIONBEGIN:
 				imp->SymbolTable.Push();
 				imp->stack.push(node);
 				break;
-			case COMMANDTYPE::RETURN0:
-			case COMMANDTYPE::BREAK:
-			case COMMANDTYPE::CONTINUE:
+			case InstructionType::RETURN0:
+			case InstructionType::BREAK:
+			case InstructionType::CONTINUE:
 				imp->stack.push(node);
 				break;
-			case COMMANDTYPE::RETURN1:
-			case COMMANDTYPE::LOCAL:
-			case COMMANDTYPE::CALLBEGIN:
-			case COMMANDTYPE::POSITIVE:
-			case COMMANDTYPE::NEGATIVE:
+			case InstructionType::RETURN1:
+			case InstructionType::LOCAL:
+			case InstructionType::CALLBEGIN:
+			case InstructionType::POSITIVE:
+			case InstructionType::NEGATIVE:
 				// prefix operators
 				node->Children.resize(1);
 				node->Children[0] = imp->stack.top();
 				imp->stack.pop();
 				imp->stack.push(imp->OptimizeIfPossible(node));
 				break;
-			case CALLEND: {
+			case InstructionType::CALLEND: {
 				//compile the call list
 				std::stack<std::shared_ptr<Node>> callstack;
 				bool finished = false;
@@ -521,7 +527,7 @@ namespace exec {
 					auto top = imp->stack.top();
 					if (top->IsCommand()) {
 						auto call = reinterpret_cast<NodeCommand*>(&*top);
-						if (call->CommandType == COMMANDTYPE::CALLBEGIN) {
+						if (call->CommandType == InstructionType::CALLBEGIN) {
 							call->Children.reserve(callstack.size() + 1);
 							while (!callstack.empty()) {
 								call->Children.push_back(imp->ReplaceIdIfPossible(callstack.top()));
@@ -529,7 +535,7 @@ namespace exec {
 							}
 							// callbegin and callend are discarded
 							// and replaced with a single CALL command
-							call->CommandType = COMMANDTYPE::CALL;
+							call->CommandType = InstructionType::CALL;
 							finished = true;
 						}
 					}
@@ -540,12 +546,12 @@ namespace exec {
 				} while (!finished);
 			}
 				break;
-			case COMMANDTYPE::BLOCKBEGIN:
+			case InstructionType::BLOCKBEGIN:
 				node->DoesPushStack = true;
 				imp->SymbolTable.Push();
 				imp->stack.push(node);
 				break;
-			case COMMANDTYPE::BLOCKEND: {
+			case InstructionType::BLOCKEND: {
 				//compile the call list
 				std::stack<std::shared_ptr<Node>> blockstack;
 				bool finished = false;
@@ -553,7 +559,7 @@ namespace exec {
 					auto top = imp->stack.top();
 					if (top->IsCommand()) {
 						auto call = reinterpret_cast<NodeCommand*>(&*top);
-						if (call->CommandType == COMMANDTYPE::BLOCKBEGIN) {
+						if (call->CommandType == InstructionType::BLOCKBEGIN) {
 							call->Children.reserve(blockstack.size());
 							while (!blockstack.empty()) {
 								call->Children.push_back(imp->ReplaceIdIfPossible(blockstack.top()));
@@ -561,7 +567,7 @@ namespace exec {
 							}
 							// callbegin and callend are discarded
 							// and replaced with a single CALL command
-							call->CommandType = COMMANDTYPE::BLOCK;
+							call->CommandType = InstructionType::BLOCK;
 							finished = true;
 						}
 					}
@@ -573,7 +579,7 @@ namespace exec {
 				imp->SymbolTable.Pop();
 			}
 				//passthrough
-			case COMMANDTYPE::END_STATEMENT:
+			case InstructionType::END_STATEMENT:
 			end_statement:
 				if (imp->SymbolTable.GetLevel() == 1 && imp->ControlLevel == 0) {
 					if (imp->VERBOSE_TREE) {
@@ -592,20 +598,20 @@ namespace exec {
 				}
 
 				break;
-			default: throw ImplementationError("Unhandled command.");
+			default: throw ImplementationException("Unhandled command.");
 		}
 
 		//operations   
 		//if (imp->ControlLevel!=imp->SymbolTable.GetLevel())
 		//{
-		/*if (cmd == COMMANDTYPE::ASSIGN)                     
+		/*if (cmd == InstructionType::ASSIGN)                     
     {                                                   
       auto symbol = node->Children[0];                   
       auto value = node->Children[1];                    
       if (symbol->IsAtom())           
       {                                                 
         auto atom = reinterpret_cast<NodeAtom*>(&*symbol);
-        if (atom->GetAtomType() == yytokentype::ID)          
+        if (atom->GetAtomType() == InstructionType::ID)          
         {
           imp->SymbolTable.Local(atom->AtomText) = value;
         }
@@ -618,7 +624,7 @@ namespace exec {
 		/*if (node->IsAtom())
     {
       auto atom = reinterpret_cast<NodeAtom*>(&*node);
-      if (atom->AtomType == yytokentype::ID)
+      if (atom->AtomType == InstructionType::ID)
       {
         auto lookup = SymbolTable.Local(atom->AtomText);
         if (lookup != nullptr) return lookup;
@@ -632,7 +638,7 @@ namespace exec {
 		return imp->stack.top()->GetText();
 	}
 
-	NodeAtom::NodeAtom(const yytokentype type, const char* text) : Node(NODETYPE::ATOM) {
+	NodeAtom::NodeAtom(const InstructionType type, const char* text) : Node(NODETYPE::NODE_ATOM) {
 		this->AtomType = type;
 		this->AtomText = text;
 	}
@@ -641,7 +647,7 @@ namespace exec {
 		this->NodeType = ntype;
 	}
 
-	NodeCommand::NodeCommand(const COMMANDTYPE cmd) : Node(NODETYPE::COMMAND) {
+	NodeCommand::NodeCommand(const InstructionType cmd) : Node(NODETYPE::NODE_COMMAND) {
 		this->DoesPushStack = false;
 		this->IsPure = true;
 		this->CommandType = cmd;
@@ -653,73 +659,74 @@ namespace exec {
 
 	const char* NodeCommand::GetText() {
 		switch (this->CommandType) {
-			case COMMANDTYPE::END_STATEMENT: return "ENDST";
-			case COMMANDTYPE::ASSIGN: return "ASSIGN";
-			case COMMANDTYPE::CALL: return "CALL";
-			case COMMANDTYPE::CALLBEGIN: return "CALLBEGIN";
-			case COMMANDTYPE::CALLEND: return "CALLEND";
-			case COMMANDTYPE::ADD: return "ADD";
-			case COMMANDTYPE::SUBTRACT: return "SUB";
-			case COMMANDTYPE::MULTIPLY: return "MUL";
-			case COMMANDTYPE::DIVIDE: return "DIV";
-			case COMMANDTYPE::POSITIVE: return "POS";
-			case COMMANDTYPE::NEGATIVE: return "NEG";
-			case COMMANDTYPE::COMP_EQ: return "COMP_EQ";
-			case COMMANDTYPE::COMP_NE: return "COMP_NE";
-			case COMMANDTYPE::COMP_GE: return "COMP_GE";
-			case COMMANDTYPE::COMP_LE: return "COMP_LE";
-			case COMMANDTYPE::COMP_GT: return "COMP_GT";
-			case COMMANDTYPE::COMP_LT: return "COMP_LT";
-			case COMMANDTYPE::BLOCK: return "BLOCK";
-			case COMMANDTYPE::BLOCKBEGIN: return "BLOCKBEGIN";
-			case COMMANDTYPE::BLOCKEND: return "BLOCKEND";
-			case COMMANDTYPE::FUNCTIONBEGIN: return "FUNCTIONBEGIN";
-			case COMMANDTYPE::FUNCTIONEND: return "FUNCTIONEND";
-			case COMMANDTYPE::LOCAL: return "LOCAL";
-			case COMMANDTYPE::CONTROL: return "CONTROL";
-			case COMMANDTYPE::IF: return "IF";
-			case COMMANDTYPE::IFELSE: return "IFELSE";
-			case COMMANDTYPE::LOOP0: return "LOOP0";
-			case COMMANDTYPE::LOOP1: return "LOOP1";
-			case COMMANDTYPE::LOOP2: return "LOOP2";
-			case COMMANDTYPE::LOOP3: return "LOOP3";
-			default: throw ImplementationError("Unhandled commandtype.");
+			case InstructionType::END_STATEMENT: return "ENDST";
+			case InstructionType::ASSIGN: return "ASSIGN";
+			case InstructionType::CALL: return "CALL";
+			case InstructionType::CALLBEGIN: return "CALLBEGIN";
+			case InstructionType::CALLEND: return "CALLEND";
+			case InstructionType::ADD: return "ADD";
+			case InstructionType::SUBTRACT: return "SUB";
+			case InstructionType::MULTIPLY: return "MUL";
+			case InstructionType::DIVIDE: return "DIV";
+			case InstructionType::POSITIVE: return "POS";
+			case InstructionType::NEGATIVE: return "NEG";
+			case InstructionType::COMP_EQ: return "COMP_EQ";
+			case InstructionType::COMP_NE: return "COMP_NE";
+			case InstructionType::COMP_GE: return "COMP_GE";
+			case InstructionType::COMP_LE: return "COMP_LE";
+			case InstructionType::COMP_GT: return "COMP_GT";
+			case InstructionType::COMP_LT: return "COMP_LT";
+			case InstructionType::BLOCK: return "BLOCK";
+			case InstructionType::BLOCKBEGIN: return "BLOCKBEGIN";
+			case InstructionType::BLOCKEND: return "BLOCKEND";
+			case InstructionType::FUNCTIONBEGIN: return "FUNCTIONBEGIN";
+			case InstructionType::FUNCTIONEND: return "FUNCTIONEND";
+			case InstructionType::LOCAL: return "LOCAL";
+			case InstructionType::CONTROL: return "CONTROL";
+			case InstructionType::IF: return "IF";
+			case InstructionType::IFELSE: return "IFELSE";
+			case InstructionType::LOOP0: return "LOOP0";
+			case InstructionType::LOOP1: return "LOOP1";
+			case InstructionType::LOOP2: return "LOOP2";
+			case InstructionType::LOOP3: return "LOOP3";
+			default: throw ImplementationException("Unhandled commandtype.");
 		}
 	}
 
 	const char* GetTypeText(NODETYPE nodetype) {
 		switch (nodetype) {
-			case NODETYPE::ATOM: return"identifier";
-			case NODETYPE::BIT: return "bit";
-			case NODETYPE::BITS: return "bitseq";
-			case NODETYPE::COMMAND: return "command";
-			case NODETYPE::FLOAT: return "float";
-			case NODETYPE::FUNCTION: return "function";
-			case NODETYPE::INTEGER: return "integer";
+			case NODETYPE::NODE_ATOM: return"identifier";
+			case NODETYPE::NODE_BIT: return "bit";
+			case NODETYPE::NODE_BITS: return "bitseq";
+			case NODETYPE::NODE_COMMAND: return "command";
+			case NODETYPE::NODE_FLOAT: return "float";
+			case NODETYPE::NODE_FUNCTION: return "function";
+			case NODETYPE::NODE_INTEGER: return "integer";
 			case NODETYPE::NODE_ERROR: return "error";
 			case NODETYPE::NODE_NONE: return "void";
-			case NODETYPE::STRING: return "string";
+			case NODETYPE::NODE_STRING: return "string";
+			default: throw ImplementationException("Unhandled nodetype.");
 		}
 	}
 
 
 	const char* Node::GetText() {
-		throw ImplementationError("Unspecified node type.");
+		throw ImplementationException("Unspecified node type.");
 	}
 
-	COMMANDTYPE Node::GetCommandType() {
-		throw ImplementationError("Unspecified node type.");
+	InstructionType Node::GetCommandType() {
+		throw ImplementationException("Unspecified node type.");
 	}
 
-	yytokentype Node::GetAtomType() {
-		throw ImplementationError("Unspecified node type.");
+	InstructionType Node::GetAtomType() {
+		throw ImplementationException("Unspecified node type.");
 	}
 
 	const char* Node::GetAtomText() {
-		throw ImplementationError("Unspecified node type.");
+		throw ImplementationException("Unspecified node type.");
 	}
 
-	yytokentype NodeAtom::GetAtomType() {
+	InstructionType NodeAtom::GetAtomType() {
 		return this->AtomType;
 	}
 
@@ -727,7 +734,7 @@ namespace exec {
 		return this->AtomText.c_str();
 	}
 
-	COMMANDTYPE NodeCommand::GetCommandType() {
+	InstructionType NodeCommand::GetCommandType() {
 		return this->CommandType;
 	}
 
@@ -736,14 +743,14 @@ namespace exec {
 			auto cmd = reinterpret_cast<NodeCommand*>(&*node);
 			if (cmd->Children.size() == 1) {
 				auto cmdtype = cmd->GetCommandType();
-				if (cmdtype == COMMANDTYPE::POSITIVE) {
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::INTEGER ||
-						cmd->Children[0]->GetNodeType() == NODETYPE::FLOAT)
+				if (cmdtype == InstructionType::POSITIVE) {
+					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_INTEGER ||
+						cmd->Children[0]->GetNodeType() == NODETYPE::NODE_FLOAT)
 						return cmd->Children[0];
-				} else if (cmdtype == COMMANDTYPE::NEGATIVE) {
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::INTEGER)
+				} else if (cmdtype == InstructionType::NEGATIVE) {
+					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_INTEGER)
 						return std::make_shared<NodeInteger>(- reinterpret_cast<NodeInteger*>(&*cmd->Children[0])->Value);
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::FLOAT)
+					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_FLOAT)
 						return std::make_shared<NodeFloat>(- reinterpret_cast<NodeFloat*>(&*cmd->Children[0])->Value);
 				}
 
@@ -751,20 +758,20 @@ namespace exec {
 				auto cmdtype = cmd->GetCommandType();
 
 				//try reduce arithmetic nodes
-				if (cmdtype == COMMANDTYPE::ADD || cmdtype == COMMANDTYPE::SUBTRACT ||
-					cmdtype == COMMANDTYPE::MULTIPLY || cmdtype == COMMANDTYPE::DIVIDE) {
+				if (cmdtype == InstructionType::ADD || cmdtype == InstructionType::SUBTRACT ||
+					cmdtype == InstructionType::MULTIPLY || cmdtype == InstructionType::DIVIDE) {
 					//reduce integer arithmetic
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::INTEGER &&
-						cmd->Children[1]->GetNodeType() == NODETYPE::INTEGER) {
+					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_INTEGER &&
+						cmd->Children[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
 						auto a = reinterpret_cast<NodeInteger*>(&*cmd->Children[0]);
 						auto b = reinterpret_cast<NodeInteger*>(&*cmd->Children[1]);
 						switch (cmdtype) {
-							case COMMANDTYPE::ADD: return std::make_shared<NodeInteger>(a->Value + b->Value);
-							case COMMANDTYPE::SUBTRACT: return std::make_shared<NodeInteger>(a->Value - b->Value);
-							case COMMANDTYPE::MULTIPLY: return std::make_shared<NodeInteger>(a->Value * b->Value);
-							case COMMANDTYPE::DIVIDE:
+							case InstructionType::ADD: return std::make_shared<NodeInteger>(a->Value + b->Value);
+							case InstructionType::SUBTRACT: return std::make_shared<NodeInteger>(a->Value - b->Value);
+							case InstructionType::MULTIPLY: return std::make_shared<NodeInteger>(a->Value * b->Value);
+							case InstructionType::DIVIDE:
 								if (b->Value == 0) {
-									yyerror("Division by 0.");
+									throw RuntimeException("Division by zero.");
 									return node;
 								};
 								return std::make_shared<NodeInteger>(a->Value / b->Value);
@@ -772,15 +779,15 @@ namespace exec {
 					}
 
 					//reduce float arithmetic
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::FLOAT &&
-						cmd->Children[1]->GetNodeType() == NODETYPE::FLOAT) {
+					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_FLOAT &&
+						cmd->Children[1]->GetNodeType() == NODETYPE::NODE_FLOAT) {
 						auto a = reinterpret_cast<NodeFloat*>(&*cmd->Children[0]);
 						auto b = reinterpret_cast<NodeFloat*>(&*cmd->Children[1]);
 						switch (cmdtype) {
-							case COMMANDTYPE::ADD: return std::make_shared<NodeFloat>(a->Value + b->Value);
-							case COMMANDTYPE::SUBTRACT: return std::make_shared<NodeFloat>(a->Value - b->Value);
-							case COMMANDTYPE::MULTIPLY: return std::make_shared<NodeFloat>(a->Value * b->Value);
-							case COMMANDTYPE::DIVIDE:
+							case InstructionType::ADD: return std::make_shared<NodeFloat>(a->Value + b->Value);
+							case InstructionType::SUBTRACT: return std::make_shared<NodeFloat>(a->Value - b->Value);
+							case InstructionType::MULTIPLY: return std::make_shared<NodeFloat>(a->Value * b->Value);
+							case InstructionType::DIVIDE:
 								return std::make_shared<NodeFloat>(a->Value / b->Value);
 						}
 					}
@@ -813,11 +820,15 @@ namespace exec {
 		return Value.c_str();
 	}
 
-	NodeString::NodeString(const std::string str) : Node(NODETYPE::STRING), Value(str) { }
+	NodeString::NodeString(const std::string str) : Node(NODETYPE::NODE_STRING), Value(str) { }
 
-	void Executor::SetShowPrompt(bool show) {
-		this->imp->ShowPrompt = show;
-		if (show)
+	bool Executor::GetInteractiveMode() {
+		return this->imp->ShowPrompt;
+	}
+
+	void Executor::SetInteractiveMode(bool interactive) {
+		this->imp->ShowPrompt = interactive;
+		if (interactive)
 			printf(">");
 	}
 
@@ -875,25 +886,25 @@ namespace exec {
 	}
 
 	NodeFunction::NodeFunction(native_function_ptr fptr, bool pure)
-		: Node(NODETYPE::FUNCTION), Native(true), nativeptr(fptr), Pure(pure) { }
+		: Node(NODETYPE::NODE_FUNCTION), Native(true), nativeptr(fptr), Pure(pure) { }
 
 	NodeFunction::NodeFunction(std::vector<std::string> parameterList, std::shared_ptr<Node> impl)
-		:Node(NODETYPE::FUNCTION), Native(false), nativeptr(nullptr), ParameterList(parameterList), Implementation(impl) {}
+		:Node(NODETYPE::NODE_FUNCTION), Native(false), nativeptr(nullptr), ParameterList(parameterList), Implementation(impl) {}
 
 	const char* NodeFunction::GetText() {
 		if (Native) return "native function";
-		else "function";
+		else return "function";
 	}
 
-	NodeBit::NodeBit(bool value) : Value(value), Node(NODETYPE::BIT) {};
+	NodeBit::NodeBit(bool value) : Value(value), Node(NODETYPE::NODE_BIT) {};
 
 	const char* NodeBit::GetText() {
 		return Value ? "1" : "0";
 	};
 
-	NodeInteger::NodeInteger(long long value) : Node(NODETYPE::INTEGER), Value(value), text(nullptr) { }
+	NodeInteger::NodeInteger(long long value) : Node(NODETYPE::NODE_INTEGER), Value(value), text(nullptr) { }
 
-	NodeFloat::NodeFloat(double value) : Node(NODETYPE::FLOAT), Value(value), text(nullptr) { }
+	NodeFloat::NodeFloat(double value) : Node(NODETYPE::NODE_FLOAT), Value(value), text(nullptr) { }
 
 	void ExecutorImp::RegisterNativeFunction(const char* name, native_function_ptr fptr, bool pure) {
 		auto newfunction = std::make_shared<NodeFunction>(fptr, pure);
@@ -920,33 +931,33 @@ namespace exec {
 		if (node.Children.size() == 1) {
 			auto executed = ExecuteStatement(node.Children[0]);
 			switch (executed->GetNodeType()) {
-				case NODETYPE::INTEGER: {
+				case NODETYPE::NODE_INTEGER: {
 					auto& integer = reinterpret_cast<NodeInteger&>(*executed);
 					switch (node.CommandType) {
-						case COMMANDTYPE::POSITIVE: return executed;
-						case COMMANDTYPE::NEGATIVE: return std::make_shared<NodeInteger>(-integer.Value);
-						default: throw ImplementationError("unexpected commandtype");
+						case InstructionType::POSITIVE: return executed;
+						case InstructionType::NEGATIVE: return std::make_shared<NodeInteger>(-integer.Value);
+						default: throw ImplementationException("unexpected commandtype");
 					}
 				}
-				case NODETYPE::FLOAT: {
+				case NODETYPE::NODE_FLOAT: {
 					auto& fval = reinterpret_cast<NodeFloat&>(*executed);
 					switch (node.CommandType) {
-						case COMMANDTYPE::POSITIVE: return executed;
-						case COMMANDTYPE::NEGATIVE: std::make_shared<NodeFloat>(-fval.Value);
-						default: throw ImplementationError("unexpected commandtype");
+						case InstructionType::POSITIVE: return executed;
+						case InstructionType::NEGATIVE: std::make_shared<NodeFloat>(-fval.Value);
+						default: throw ImplementationException("unexpected commandtype");
 					}
 				}
-				case NODETYPE::BIT: {
+				case NODETYPE::NODE_BIT: {
 					auto& bval = reinterpret_cast<NodeBit&>(*executed);
 					switch (node.CommandType) {
-						case COMMANDTYPE::POSITIVE: return executed;
-						case COMMANDTYPE::NEGATIVE: return std::make_shared<NodeBit>(!bval.Value);
+						case InstructionType::POSITIVE: return executed;
+						case InstructionType::NEGATIVE: return std::make_shared<NodeBit>(!bval.Value);
 					}
 				}
 				default:
 					return Error("prefix operators + or - only work on numeric values");
 			}
-		} else throw ImplementationError("Prefix op can only have 1 child.");
+		} else throw ImplementationException("Prefix op can only have 1 child.");
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteInfixArithmetic(NodeCommand& node) {
@@ -957,32 +968,32 @@ namespace exec {
 			}
 		reexecute:
 			switch (executed[0]->GetNodeType()) {
-				case NODETYPE::INTEGER: {
-					if (node.CommandType == COMMANDTYPE::MULTIPLY &&
-						executed[1]->GetNodeType() == NODETYPE::STRING ||
-						executed[1]->GetNodeType() == NODETYPE::BITS ||
-						executed[1]->GetNodeType() == NODETYPE::ARRAY) {
+				case NODETYPE::NODE_INTEGER: {
+					if (node.CommandType == InstructionType::MULTIPLY &&
+						executed[1]->GetNodeType() == NODETYPE::NODE_STRING ||
+						executed[1]->GetNodeType() == NODETYPE::NODE_BITS ||
+						executed[1]->GetNodeType() == NODETYPE::NODE_ARRAY) {
 						std::swap(node.Children[0], node.Children[1]); //optimize, next run wont enter this branch
 						std::swap(executed[0], executed[1]);
 						goto reexecute;
 					}
-					if (node.CommandType == COMMANDTYPE::ADD ||
-						node.CommandType == COMMANDTYPE::SUBTRACT ||
-						node.CommandType == COMMANDTYPE::MULTIPLY ||
-						node.CommandType == COMMANDTYPE::DIVIDE) {
+					if (node.CommandType == InstructionType::ADD ||
+						node.CommandType == InstructionType::SUBTRACT ||
+						node.CommandType == InstructionType::MULTIPLY ||
+						node.CommandType == InstructionType::DIVIDE) {
 						auto i = executed.begin();
 						auto acc = std::make_shared<NodeInteger>(reinterpret_cast<NodeInteger*>(&**i)->Value);
 						for (i++; i != executed.end(); i++) {
-							if ((*i)->GetNodeType() != NODETYPE::INTEGER) return Error("unexpected type in an arithmetic integer expression");
+							if ((*i)->GetNodeType() != NODETYPE::NODE_INTEGER) return Error("unexpected type in an arithmetic integer expression");
 							auto val = reinterpret_cast<NodeInteger*>(&**i)->Value;
 							switch (node.CommandType) {
-								case COMMANDTYPE::ADD: acc->Value += val;
+								case InstructionType::ADD: acc->Value += val;
 									break;
-								case COMMANDTYPE::SUBTRACT: acc->Value -= val;
+								case InstructionType::SUBTRACT: acc->Value -= val;
 									break;
-								case COMMANDTYPE::MULTIPLY: acc->Value *= val;
+								case InstructionType::MULTIPLY: acc->Value *= val;
 									break;
-								case COMMANDTYPE::DIVIDE: if (val == 0) return Error("integer division by 0"); else acc->Value /= val;
+								case InstructionType::DIVIDE: if (val == 0) return Error("integer division by 0"); else acc->Value /= val;
 									break;
 							}
 						}
@@ -991,35 +1002,35 @@ namespace exec {
 						auto& a = reinterpret_cast<NodeInteger&>(*executed[0]);
 						auto& b = reinterpret_cast<NodeInteger&>(*executed[1]);
 						switch (node.CommandType) {
-							case COMMANDTYPE::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
-							case COMMANDTYPE::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
-							case COMMANDTYPE::COMP_LE: return std::make_shared<NodeBit>(a.Value <= b.Value);
-							case COMMANDTYPE::COMP_GE: return std::make_shared<NodeBit>(a.Value >= b.Value);
-							case COMMANDTYPE::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
-							case COMMANDTYPE::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
+							case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
+							case InstructionType::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
+							case InstructionType::COMP_LE: return std::make_shared<NodeBit>(a.Value <= b.Value);
+							case InstructionType::COMP_GE: return std::make_shared<NodeBit>(a.Value >= b.Value);
+							case InstructionType::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
+							case InstructionType::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
 						}
 					} else return Error("error in expression");
 
 				}
-				case NODETYPE::FLOAT: {
+				case NODETYPE::NODE_FLOAT: {
 
-					if (node.CommandType == COMMANDTYPE::ADD ||
-						node.CommandType == COMMANDTYPE::SUBTRACT ||
-						node.CommandType == COMMANDTYPE::MULTIPLY ||
-						node.CommandType == COMMANDTYPE::DIVIDE) {
+					if (node.CommandType == InstructionType::ADD ||
+						node.CommandType == InstructionType::SUBTRACT ||
+						node.CommandType == InstructionType::MULTIPLY ||
+						node.CommandType == InstructionType::DIVIDE) {
 						auto i = executed.begin();
 						auto acc = std::make_shared<NodeFloat>(reinterpret_cast<NodeFloat*>(&**i)->Value);
 						for (i++; i != executed.end(); i++) {
-							if ((*i)->GetNodeType() != NODETYPE::FLOAT) return Error("unexpected type in an arithmetic float expression");
+							if ((*i)->GetNodeType() != NODETYPE::NODE_FLOAT) return Error("unexpected type in an arithmetic float expression");
 							auto val = reinterpret_cast<NodeFloat*>(&**i)->Value;
 							switch (node.CommandType) {
-								case COMMANDTYPE::ADD: acc->Value += val;
+								case InstructionType::ADD: acc->Value += val;
 									break;
-								case COMMANDTYPE::SUBTRACT: acc->Value -= val;
+								case InstructionType::SUBTRACT: acc->Value -= val;
 									break;
-								case COMMANDTYPE::MULTIPLY: acc->Value *= val;
+								case InstructionType::MULTIPLY: acc->Value *= val;
 									break;
-								case COMMANDTYPE::DIVIDE: acc->Value /= val;
+								case InstructionType::DIVIDE: acc->Value /= val;
 									break;
 							}
 						}
@@ -1028,22 +1039,22 @@ namespace exec {
 						auto& a = reinterpret_cast<NodeFloat&>(*executed[0]);
 						auto& b = reinterpret_cast<NodeFloat&>(*executed[1]);
 						switch (node.CommandType) {
-							case COMMANDTYPE::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
-							case COMMANDTYPE::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
-							case COMMANDTYPE::COMP_LE: return std::make_shared<NodeBit>(a.Value <= b.Value);
-							case COMMANDTYPE::COMP_GE: return std::make_shared<NodeBit>(a.Value >= b.Value);
-							case COMMANDTYPE::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
-							case COMMANDTYPE::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
+							case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
+							case InstructionType::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
+							case InstructionType::COMP_LE: return std::make_shared<NodeBit>(a.Value <= b.Value);
+							case InstructionType::COMP_GE: return std::make_shared<NodeBit>(a.Value >= b.Value);
+							case InstructionType::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
+							case InstructionType::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
 						}
 					}
 				}
-				case NODETYPE::STRING: {
-					//if (executed[1]->GetNodeType()!=NODETYPE::STRING) return Error("non string value in string expression");
+				case NODETYPE::NODE_STRING: {
+					//if (executed[1]->GetNodeType()!=NODETYPE::NODE_STRING) return Error("non string value in string expression");
 					auto& left = reinterpret_cast<NodeString&>(*executed[0]);
 					NodeString* right = nullptr;
 
-					if (node.CommandType != COMMANDTYPE::MULTIPLY) {
-						if (executed[1]->GetNodeType() != NODETYPE::STRING) {
+					if (node.CommandType != InstructionType::MULTIPLY) {
+						if (executed[1]->GetNodeType() != NODETYPE::NODE_STRING) {
 							return Error("non string value in string expression");
 						} else {
 							right = reinterpret_cast<NodeString*>(&*executed[1]);
@@ -1051,18 +1062,18 @@ namespace exec {
 					}
 
 					switch (node.CommandType) {
-						case COMMANDTYPE::ADD: {
+						case InstructionType::ADD: {
 							std::string acc = left.Value;
 							for (unsigned i = 1; i < executed.size(); i++) {
-								if (executed[i]->GetNodeType() == NODETYPE::STRING) {
+								if (executed[i]->GetNodeType() == NODETYPE::NODE_STRING) {
 									acc += reinterpret_cast<NodeString&>(*executed[i]).Value;
 								} else return Error("non string value in string concatenation");
 							}
 							return std::make_shared<NodeString>(acc);
 						}
-						case COMMANDTYPE::MULTIPLY:
+						case InstructionType::MULTIPLY:
 							if (executed.size() == 2) {
-								if (executed[1]->GetNodeType() == NODETYPE::INTEGER) {
+								if (executed[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
 									int ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
 									std::string result;
 									result.reserve(left.Value.size() * ival);
@@ -1071,22 +1082,22 @@ namespace exec {
 								} else return Error("multiplication is not defined between the given arguments (try string * int)");
 							} else return Error("multiplication when left side is string is only valid with an integer");
 							break;
-						case COMMANDTYPE::COMP_EQ: return std::make_shared<NodeBit>(left.Value == right->Value);
-						case COMMANDTYPE::COMP_NE: return std::make_shared<NodeBit>(left.Value != right->Value);
-						case COMMANDTYPE::COMP_GE: return std::make_shared<NodeBit>(left.Value >= right->Value);
-						case COMMANDTYPE::COMP_LE: return std::make_shared<NodeBit>(left.Value <= right->Value);
-						case COMMANDTYPE::COMP_GT: return std::make_shared<NodeBit>(left.Value > right->Value);
-						case COMMANDTYPE::COMP_LT: return std::make_shared<NodeBit>(left.Value < right->Value);
+						case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(left.Value == right->Value);
+						case InstructionType::COMP_NE: return std::make_shared<NodeBit>(left.Value != right->Value);
+						case InstructionType::COMP_GE: return std::make_shared<NodeBit>(left.Value >= right->Value);
+						case InstructionType::COMP_LE: return std::make_shared<NodeBit>(left.Value <= right->Value);
+						case InstructionType::COMP_GT: return std::make_shared<NodeBit>(left.Value > right->Value);
+						case InstructionType::COMP_LT: return std::make_shared<NodeBit>(left.Value < right->Value);
 						default: return Error("string doesn't support the requested command");
 					}
 				}
-				case NODETYPE::BITS: {
-					//if (executed[1]->GetNodeType()!=NODETYPE::STRING) return Error("non string value in string expression");
+				case NODETYPE::NODE_BITS: {
+					//if (executed[1]->GetNodeType()!=NODETYPE::NODE_STRING) return Error("non string value in string expression");
 					auto& left = reinterpret_cast<NodeBits&>(*executed[0]);
 					NodeBits* right = nullptr;
 
-					if (node.CommandType != COMMANDTYPE::MULTIPLY) {
-						if (executed[1]->GetNodeType() != NODETYPE::BITS) {
+					if (node.CommandType != InstructionType::MULTIPLY) {
+						if (executed[1]->GetNodeType() != NODETYPE::NODE_BITS) {
 							return Error("non binseq value in string expression");
 						} else {
 							right = reinterpret_cast<NodeBits*>(&*executed[1]);
@@ -1094,18 +1105,18 @@ namespace exec {
 					}
 
 					switch (node.CommandType) {
-						case COMMANDTYPE::ADD: {
+						case InstructionType::ADD: {
 							binseq::bit_sequence acc = left.Value;
 							for (unsigned i = 1; i < executed.size(); i++) {
-								if (executed[i]->GetNodeType() == NODETYPE::BITS) {
+								if (executed[i]->GetNodeType() == NODETYPE::NODE_BITS) {
 									acc = acc + reinterpret_cast<NodeBits&>(*executed[i]).Value;
 								} else return Error("non binseq value in binseq concatenation");
 							}
 							return std::make_shared<NodeBits>(std::move(acc));
 						}
-						case COMMANDTYPE::MULTIPLY:
+						case InstructionType::MULTIPLY:
 							if (executed.size() == 2) {
-								if (executed[1]->GetNodeType() == NODETYPE::INTEGER) {
+								if (executed[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
 									int ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
 									binseq::bit_sequence result;
 									while (ival--) result = result + left.Value;
@@ -1113,21 +1124,21 @@ namespace exec {
 								} else return Error("multiplication is not defined between the given arguments (try binseq * int)");
 							} else return Error("multiplication when left side is binseq is only valid with an integer");
 							break;
-						case COMMANDTYPE::COMP_EQ: return std::make_shared<NodeBit>(left.Value == right->Value);
-						case COMMANDTYPE::COMP_NE: return std::make_shared<NodeBit>(left.Value != right->Value);
-						case COMMANDTYPE::COMP_GE: return std::make_shared<NodeBit>(left.Value >= right->Value);
-						case COMMANDTYPE::COMP_LE: return std::make_shared<NodeBit>(left.Value <= right->Value);
-						case COMMANDTYPE::COMP_GT: return std::make_shared<NodeBit>(left.Value > right->Value);
-						case COMMANDTYPE::COMP_LT: return std::make_shared<NodeBit>(left.Value < right->Value);
+						case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(left.Value == right->Value);
+						case InstructionType::COMP_NE: return std::make_shared<NodeBit>(left.Value != right->Value);
+						case InstructionType::COMP_GE: return std::make_shared<NodeBit>(left.Value >= right->Value);
+						case InstructionType::COMP_LE: return std::make_shared<NodeBit>(left.Value <= right->Value);
+						case InstructionType::COMP_GT: return std::make_shared<NodeBit>(left.Value > right->Value);
+						case InstructionType::COMP_LT: return std::make_shared<NodeBit>(left.Value < right->Value);
 						default: return Error("binseq doesn't support the requested command");
 					}
 				}
-				case NODETYPE::ARRAY: {
+				case NODETYPE::NODE_ARRAY: {
 					auto& left = reinterpret_cast<NodeArray&>(*executed[0]);
 					NodeArray* right = nullptr;
 
-					if (node.CommandType != COMMANDTYPE::MULTIPLY) {
-						if (executed[1]->GetNodeType() != NODETYPE::ARRAY) {
+					if (node.CommandType != InstructionType::MULTIPLY) {
+						if (executed[1]->GetNodeType() != NODETYPE::NODE_ARRAY) {
 							return Error("non array value in string expression");
 						} else {
 							right = reinterpret_cast<NodeArray*>(&*executed[1]);
@@ -1135,11 +1146,11 @@ namespace exec {
 					}
 
 					switch (node.CommandType) {
-						case COMMANDTYPE::ADD: {
+						case InstructionType::ADD: {
 							auto acc = std::make_shared<NodeArray>();
 							for (unsigned i = 1; i < executed.size(); i++) {
 								acc->Vector = left.Vector; //copy
-								if (executed[i]->GetNodeType() == NODETYPE::ARRAY) {
+								if (executed[i]->GetNodeType() == NODETYPE::NODE_ARRAY) {
 									auto& other = reinterpret_cast<NodeArray&>(*executed[i]).Vector;
 									for (auto i = other.begin(); i != other.end(); i++) {
 										acc->Vector.push_back(*i);
@@ -1148,9 +1159,9 @@ namespace exec {
 							}
 							return acc;
 						}
-						case COMMANDTYPE::MULTIPLY:
+						case InstructionType::MULTIPLY:
 							if (executed.size() == 2) {
-								if (executed[1]->GetNodeType() == NODETYPE::ARRAY) {
+								if (executed[1]->GetNodeType() == NODETYPE::NODE_ARRAY) {
 									int ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
 									auto acc = std::make_shared<NodeArray>();
 									while (ival--) {
@@ -1166,18 +1177,18 @@ namespace exec {
 						default: return Error("binseq doesn't support the requested command");
 					}
 				}
-				case NODETYPE::BIT: {
-					if (node.CommandType == COMMANDTYPE::ADD ||
-						node.CommandType == COMMANDTYPE::MULTIPLY) {
+				case NODETYPE::NODE_BIT: {
+					if (node.CommandType == InstructionType::ADD ||
+						node.CommandType == InstructionType::MULTIPLY) {
 						auto i = executed.begin();
 						auto acc = std::make_shared<NodeBit>(reinterpret_cast<NodeBit*>(&**i)->Value);
 						for (i++; i != executed.end(); i++) {
-							if ((*i)->GetNodeType() != NODETYPE::BIT) return Error("unexpected type in a bit expression");
+							if ((*i)->GetNodeType() != NODETYPE::NODE_BIT) return Error("unexpected type in a bit expression");
 							auto val = reinterpret_cast<NodeBit*>(&**i)->Value;
 							switch (node.CommandType) {
-								case COMMANDTYPE::ADD: acc->Value = acc->Value || val;
+								case InstructionType::ADD: acc->Value = acc->Value || val;
 									break;
-								case COMMANDTYPE::MULTIPLY: acc->Value = acc->Value && val;
+								case InstructionType::MULTIPLY: acc->Value = acc->Value && val;
 									break;
 							}
 						}
@@ -1186,8 +1197,8 @@ namespace exec {
 						auto& a = reinterpret_cast<NodeBit&>(*executed[0]);
 						auto& b = reinterpret_cast<NodeBit&>(*executed[1]);
 						switch (node.CommandType) {
-							case COMMANDTYPE::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
-							case COMMANDTYPE::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
+							case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
+							case InstructionType::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
 							default: return Error("invalid expression");
 						}
 					} else return Error("error in expression");
@@ -1197,7 +1208,7 @@ namespace exec {
 				default:
 					return Error(std::string("arithmetic operators only works don't work on ") + (GetTypeText(executed[0]->GetNodeType())));
 			}
-		} else throw ImplementationError("arithmetic operators need to have at least 2 arguments");
+		} else throw ImplementationException("arithmetic operators need to have at least 2 arguments");
 
 	}
 
@@ -1205,13 +1216,13 @@ namespace exec {
 		if (node.Children.size() == 2) {
 			auto lvalue = reinterpret_cast<Node*>(&*node.Children[0]);
 			auto rvalue = ExecuteStatement(node.Children[1]);
-			if (lvalue->GetNodeType() == NODETYPE::ATOM) {
+			if (lvalue->GetNodeType() == NODETYPE::NODE_ATOM) {
 				auto atom = reinterpret_cast<NodeAtom*>(lvalue);
-				if (atom->GetAtomType() == yytokentype::ID) {
+				if (atom->GetAtomType() == InstructionType::ID) {
 					return this->SymbolTable[atom->AtomText] = rvalue;
 				} else return Error(atom->AtomText + " is not a valid indentifier");
 			} else return Error("left side of an assignment must be an identifier");
-		} else throw ImplementationError("Assignment requires 2 parameters.");
+		} else throw ImplementationException("Assignment requires 2 parameters.");
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteBlock(NodeCommand& node) {
@@ -1231,7 +1242,7 @@ namespace exec {
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteConditional(NodeCommand& node) {
 		std::shared_ptr<Node> result;
 		auto cond = ExecuteStatement(node.Children[0]);
-		if (cond->GetNodeType() == NODETYPE::BIT) {
+		if (cond->GetNodeType() == NODETYPE::NODE_BIT) {
 			if (reinterpret_cast<NodeBit&>(*cond).Value) {
 				return ExecuteStatement(node.Children[1]);
 			} else if (node.Children.size() == 3) {
@@ -1265,14 +1276,14 @@ namespace exec {
 				iterate = node.Children[2];
 				body = node.Children[3];
 				break;
-			default: throw ImplementationError("loop expects 1 or 2 or 3 or 4 children");
+			default: throw ImplementationException("loop expects 1 or 2 or 3 or 4 children");
 		}
 
 		if (init != nullptr) ExecuteStatement(init);
 
 		while (true) {
 			auto condResult = ExecuteStatement(cond);
-			if (condResult->GetNodeType() == NODETYPE::BIT) {
+			if (condResult->GetNodeType() == NODETYPE::NODE_BIT) {
 				if (reinterpret_cast<NodeBit&>(*condResult).Value) {
 					auto result = ExecuteStatement(body);
 					if (result == nullptr || result->GetNodeType() == NODETYPE::NODE_BREAK)
@@ -1298,69 +1309,69 @@ namespace exec {
 
 		switch (node.CommandType) {
 				//arithmetic
-			case COMMANDTYPE::ADD:
-			case COMMANDTYPE::SUBTRACT:
-			case COMMANDTYPE::MULTIPLY:
-			case COMMANDTYPE::DIVIDE:
-			case COMMANDTYPE::COMP_EQ:
-			case COMMANDTYPE::COMP_NE:
-			case COMMANDTYPE::COMP_LE:
-			case COMMANDTYPE::COMP_GE:
-			case COMMANDTYPE::COMP_LT:
-			case COMMANDTYPE::COMP_GT:
+			case InstructionType::ADD:
+			case InstructionType::SUBTRACT:
+			case InstructionType::MULTIPLY:
+			case InstructionType::DIVIDE:
+			case InstructionType::COMP_EQ:
+			case InstructionType::COMP_NE:
+			case InstructionType::COMP_LE:
+			case InstructionType::COMP_GE:
+			case InstructionType::COMP_LT:
+			case InstructionType::COMP_GT:
 				result = ExecuteInfixArithmetic(node);
 				break;
 				//arithmetic prefix
-			case COMMANDTYPE::NEGATIVE:
-			case COMMANDTYPE::POSITIVE:
+			case InstructionType::NEGATIVE:
+			case InstructionType::POSITIVE:
 				result = ExecutePrefixArithmetic(node);
 				break;
 				//assignment :)
-			case COMMANDTYPE::ASSIGN:
+			case InstructionType::ASSIGN:
 				result = ExecuteAssignment(node);
 				break;
 				//function calls
-			case COMMANDTYPE::CALL:
+			case InstructionType::CALL:
 				result = ExecuteCall(node);
 				break;
-			case COMMANDTYPE::BLOCK:
+			case InstructionType::BLOCK:
 				result = ExecuteBlock(node);
 				break;
-			case COMMANDTYPE::LOCAL: {
+			case InstructionType::LOCAL: {
 				auto state = SymbolTable.LocalMode;
 				SymbolTable.LocalMode = true;
 				result = ExecuteBlock(node);
 				SymbolTable.LocalMode = state;
 			}
 				break;
-			case COMMANDTYPE::LOOP0:
-			case COMMANDTYPE::LOOP1:
-			case COMMANDTYPE::LOOP2:
-			case COMMANDTYPE::LOOP3:
+			case InstructionType::LOOP0:
+			case InstructionType::LOOP1:
+			case InstructionType::LOOP2:
+			case InstructionType::LOOP3:
 				result = ExecuteLoop(node);
 				break;
-			case COMMANDTYPE::IF:
-			case COMMANDTYPE::IFELSE:
+			case InstructionType::IF:
+			case InstructionType::IFELSE:
 				result = ExecuteConditional(node);
 				break;
-			case COMMANDTYPE::BREAK:
+			case InstructionType::BREAK:
 				result = std::make_shared<Node>(NODETYPE::NODE_BREAK);
 				break;
-			case COMMANDTYPE::CONTINUE:
+			case InstructionType::CONTINUE:
 				result = std::make_shared<Node>(NODETYPE::NODE_CONTINUE);
 				break;
-			case COMMANDTYPE::RETURN0:
+			case InstructionType::RETURN0:
 				result = std::make_shared<NodeReturn>(nullptr);
 				break;
-			case COMMANDTYPE::RETURN1:
+			case InstructionType::RETURN1:
 				result = std::make_shared<NodeReturn>(ExecuteBlock(node));
 				break;
-			case COMMANDTYPE::BLOCKBEGIN:
-			case COMMANDTYPE::BLOCKEND:
-			case COMMANDTYPE::CALLBEGIN:
-			case COMMANDTYPE::CALLEND:
-			case COMMANDTYPE::END_STATEMENT: throw ImplementationError("should have been processed");
-			default: throw ImplementationError("unhandled case");
+			case InstructionType::BLOCKBEGIN:
+			case InstructionType::BLOCKEND:
+			case InstructionType::CALLBEGIN:
+			case InstructionType::CALLEND:
+			case InstructionType::END_STATEMENT: throw ImplementationException("should have been processed");
+			default: throw ImplementationException("unhandled case");
 		}
 
 		if (pushpop)
@@ -1371,12 +1382,12 @@ namespace exec {
 
 	std::shared_ptr<Node> ExecutorImp::ExecuteStatement(std::shared_ptr<Node> node) {
 		switch (node->GetNodeType()) {
-			case NODETYPE::COMMAND:
+			case NODETYPE::NODE_COMMAND:
 				//pass by simple reference, we're already holding the shared ptr at least 2 times
 				return ExecuteCommand(reinterpret_cast<NodeCommand&>(*node));
-			case NODETYPE::ATOM: {
+			case NODETYPE::NODE_ATOM: {
 				auto id = reinterpret_cast<NodeAtom&>(*node);
-				if (id.GetAtomType() == yytokentype::ID) {
+				if (id.GetAtomType() == InstructionType::ID) {
 					auto ptr = SymbolTable[id.AtomText];
 					if (ptr != nullptr)
 						return ptr;
@@ -1401,21 +1412,21 @@ namespace exec {
 		static void view_primitive(Node& node, const char* sep = 0) {
 			if (sep == 0) sep = " ";
 			switch (node.GetNodeType()) {
-				case NODETYPE::INTEGER: printf("%lld%s", reinterpret_cast<NodeInteger&>(node).Value, sep);
+				case NODETYPE::NODE_INTEGER: printf("%lld%s", reinterpret_cast<NodeInteger&>(node).Value, sep);
 					break;
-				case NODETYPE::FLOAT: printf("%g%s", reinterpret_cast<NodeFloat&>(node).Value, sep);
+				case NODETYPE::NODE_FLOAT: printf("%g%s", reinterpret_cast<NodeFloat&>(node).Value, sep);
 					break;
-				case NODETYPE::STRING: printf("%s%s", reinterpret_cast<NodeString&>(node).Value.c_str(), sep);
+				case NODETYPE::NODE_STRING: printf("%s%s", reinterpret_cast<NodeString&>(node).Value.c_str(), sep);
 					break;
-				case NODETYPE::ARRAY: printf("array(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
+				case NODETYPE::NODE_ARRAY: printf("array(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
 					break;
-				case NODETYPE::BITS: printf("binseq(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
+				case NODETYPE::NODE_BITS: printf("binseq(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
 					break;
-				case NODETYPE::OBJECT: printf("object%s", sep);
+				case NODETYPE::NODE_OBJECT: printf("object%s", sep);
 					break;
-				case NODETYPE::FUNCTION: printf("function%s", sep);
+				case NODETYPE::NODE_FUNCTION: printf("function%s", sep);
 					break;
-				case NODETYPE::BIT: printf("%d%s", reinterpret_cast<NodeBit&>(node).Value, sep);
+				case NODETYPE::NODE_BIT: printf("%d%s", reinterpret_cast<NodeBit&>(node).Value, sep);
 					break;
 				default: printf("?%s", sep);
 			}
@@ -1424,7 +1435,7 @@ namespace exec {
 		static std::shared_ptr<Node> view(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			for (auto i = node.begin(); i != node.end(); i++) {
 				switch ((*i)->GetNodeType()) {
-					case NODETYPE::ARRAY: {
+					case NODETYPE::NODE_ARRAY: {
 						auto& n = reinterpret_cast<NodeArray&>(**i);
 						auto size = n.Vector.size();
 						printf("array(%d): (", size);
@@ -1434,7 +1445,7 @@ namespace exec {
 						}
 					}
 						break;
-					case NODETYPE::OBJECT: {
+					case NODETYPE::NODE_OBJECT: {
 						auto& n = reinterpret_cast<NodeObject&>(**i);
 						printf("object: (");
 						auto i = n.Map.begin();
@@ -1450,7 +1461,7 @@ namespace exec {
 						view_primitive(*(i->second), ") ");
 					}
 						break;
-					case NODETYPE::BITS: {
+					case NODETYPE::NODE_BITS: {
 						auto& n = reinterpret_cast<NodeBits&>(**i);
 						auto size = n.Value.size();
 						auto i = size;
@@ -1482,7 +1493,7 @@ namespace exec {
 		static std::shared_ptr<Node> system(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			auto result = 0;
 			for (auto i = node.begin(); i != node.end(); i++) {
-				if ((*i)->GetNodeType() == NODETYPE::STRING) {
+				if ((*i)->GetNodeType() == NODETYPE::NODE_STRING) {
 					auto result = std::system(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
 					if (result != 0) return std::make_shared<NodeInteger>(result);
 				} else return ex->Error("parameter of system must be a string");
@@ -1492,7 +1503,7 @@ namespace exec {
 
 		static std::shared_ptr<Node> exit(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 1) {
-				if (node[0]->GetNodeType() == NODETYPE::INTEGER) {
+				if (node[0]->GetNodeType() == NODETYPE::NODE_INTEGER) {
 					std::exit((int)reinterpret_cast<NodeInteger&>(*node[0]).Value);
 				} else return ex->Error("parameter of exit must be an integer");
 			} else if (node.size() == 0) {
@@ -1503,7 +1514,7 @@ namespace exec {
 		static std::shared_ptr<Node> del(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			int released = 0;
 			for (auto i = node.begin(); i != node.end(); i++) {
-				if ((*i)->GetNodeType() == NODETYPE::STRING) {
+				if ((*i)->GetNodeType() == NODETYPE::NODE_STRING) {
 					auto str = reinterpret_cast<NodeString&>(**i);
 					auto& ptr = ex->SymbolTable[str.Value];
 					if (ptr != nullptr) {
@@ -1520,17 +1531,17 @@ namespace exec {
 			if (node.size() <= 0 || node.size() > 3) return ex->Error("incorrect number of parameters at file read call");
 			binseq::u64 read_offset = 0, read_size = -1;
 			const char* fname = nullptr;
-			if (node[0]->GetNodeType() == NODETYPE::INTEGER) {
+			if (node[0]->GetNodeType() == NODETYPE::NODE_INTEGER) {
 				read_size = reinterpret_cast<NodeInteger&>(*node[0]).Value;
-				if (node[1]->GetNodeType() == NODETYPE::INTEGER) {
+				if (node[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
 					read_offset = reinterpret_cast<NodeInteger&>(*node[1]).Value;
-					if (node[2]->GetNodeType() == NODETYPE::STRING) {
+					if (node[2]->GetNodeType() == NODETYPE::NODE_STRING) {
 						fname = reinterpret_cast<NodeString&>(*node[2]).Value.c_str();
 					} else return ex->Error("unexpected type, parameter 3 of file read");
-				} else if (node[1]->GetNodeType() == NODETYPE::STRING) {
+				} else if (node[1]->GetNodeType() == NODETYPE::NODE_STRING) {
 					fname = reinterpret_cast<NodeString&>(*node[1]).Value.c_str();
 				} else return ex->Error("unexpected type, parameter 2 of file read");
-			} else if (node[0]->GetNodeType() == NODETYPE::STRING) {
+			} else if (node[0]->GetNodeType() == NODETYPE::NODE_STRING) {
 				fname = reinterpret_cast<NodeString&>(*node[0]).Value.c_str();
 			} else return ex->Error("unexpected type, parameter 1 of file read");
 
@@ -1553,8 +1564,8 @@ namespace exec {
 		static std::shared_ptr<Node> file_write(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			//write(b"0010",16,"x.bin");
 			if (node.size() == 2) {
-				if (node[0]->GetNodeType() != NODETYPE::BITS) return ex->Error("first parameter of file write must be a binseq");
-				if (node[1]->GetNodeType() != NODETYPE::STRING) return ex->Error("second parameter of file write must be a string");
+				if (node[0]->GetNodeType() != NODETYPE::NODE_BITS) return ex->Error("first parameter of file write must be a binseq");
+				if (node[1]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("second parameter of file write must be a string");
 				auto& seq = reinterpret_cast<NodeBits&>(*node[0]).Value;
 				auto fname = reinterpret_cast<NodeString&>(*node[1]).Value.c_str();
 				auto f = fopen(fname, "wb");
@@ -1562,9 +1573,9 @@ namespace exec {
 				fwrite(seq.address(), (seq.size() + 7) >> 3, 1, f);
 				fclose(f);
 			} else if (node.size() == 3) {
-				if (node[0]->GetNodeType() != NODETYPE::BITS) return ex->Error("first parameter of file write must be a binseq");
-				if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("second parameter of file write must be an integer");
-				if (node[2]->GetNodeType() != NODETYPE::STRING) return ex->Error("third parameter of file write must be a string");
+				if (node[0]->GetNodeType() != NODETYPE::NODE_BITS) return ex->Error("first parameter of file write must be a binseq");
+				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of file write must be an integer");
+				if (node[2]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("third parameter of file write must be a string");
 				auto seq = &reinterpret_cast<NodeBits&>(*node[0]).Value;
 				auto localseq = binseq::bit_sequence();
 				auto write_offset = reinterpret_cast<NodeInteger&>(*node[1]).Value;
@@ -1600,14 +1611,14 @@ namespace exec {
 			} else if (node.size() == 1) {
 				long long ival = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::INTEGER: return node[0];
-					case NODETYPE::FLOAT: ival = (long long)reinterpret_cast<NodeFloat&>(*node[0]).Value;
+					case NODETYPE::NODE_INTEGER: return node[0];
+					case NODETYPE::NODE_FLOAT: ival = (long long)reinterpret_cast<NodeFloat&>(*node[0]).Value;
 						break;
-					case NODETYPE::BIT: ival = (long long)reinterpret_cast<NodeBit&>(*node[0]).Value;
+					case NODETYPE::NODE_BIT: ival = (long long)reinterpret_cast<NodeBit&>(*node[0]).Value;
 						break;
-					case NODETYPE::STRING: ival = (long long)atol(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
+					case NODETYPE::NODE_STRING: ival = (long long)atol(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
 						break;
-					case NODETYPE::BITS: ival = *((long long*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
+					case NODETYPE::NODE_BITS: ival = *((long long*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
 						break;
 					default: return ex->Error("cannot convert parameter to integer");
 				}
@@ -1622,13 +1633,13 @@ namespace exec {
 			} else if (node.size() == 1) {
 				double val = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::FLOAT: return node[0];
-					case NODETYPE::INTEGER: val = (double)reinterpret_cast<NodeInteger&>(*node[0]).Value;
+					case NODETYPE::NODE_FLOAT: return node[0];
+					case NODETYPE::NODE_INTEGER: val = (double)reinterpret_cast<NodeInteger&>(*node[0]).Value;
 						break;
-					case NODETYPE::BIT: val = (double)reinterpret_cast<NodeBit&>(*node[0]).Value;
+					case NODETYPE::NODE_BIT: val = (double)reinterpret_cast<NodeBit&>(*node[0]).Value;
 						break;
-					case NODETYPE::STRING: val = (double)atof(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
-					case NODETYPE::BITS: val = *((double*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
+					case NODETYPE::NODE_STRING: val = (double)atof(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
+					case NODETYPE::NODE_BITS: val = *((double*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
 						break;
 					default: return ex->Error("cannot convert parameter to float");
 				}
@@ -1643,14 +1654,14 @@ namespace exec {
 			} else if (node.size() == 1) {
 				bool val = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BIT: return node[0];
-					case NODETYPE::FLOAT: val = (bool) reinterpret_cast<NodeFloat&>(*node[0]).Value;
+					case NODETYPE::NODE_BIT: return node[0];
+					case NODETYPE::NODE_FLOAT: val = (bool) reinterpret_cast<NodeFloat&>(*node[0]).Value;
 						break;
-					case NODETYPE::INTEGER: val = (bool) reinterpret_cast<NodeInteger&>(*node[0]).Value;
+					case NODETYPE::NODE_INTEGER: val = (bool) reinterpret_cast<NodeInteger&>(*node[0]).Value;
 						break;
-					case NODETYPE::STRING: val = !reinterpret_cast<NodeString&>(*node[0]).Value.compare("0") == 0;
+					case NODETYPE::NODE_STRING: val = !reinterpret_cast<NodeString&>(*node[0]).Value.compare("0") == 0;
 						break;
-					case NODETYPE::BITS: val = ((bool) reinterpret_cast<NodeBits&>(*node[0]).Value[0]);
+					case NODETYPE::NODE_BITS: val = ((bool) reinterpret_cast<NodeBits&>(*node[0]).Value[0]);
 						break;
 					default: return ex->Error("cannot convert parameter to bit");
 				}
@@ -1665,14 +1676,14 @@ namespace exec {
 			} else if (node.size() == 1) {
 				char buffer[256];
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BIT: sprintf_s(buffer, "%d", reinterpret_cast<NodeBit&>(*node[0]).Value);
+					case NODETYPE::NODE_BIT: sprintf_s(buffer, "%d", reinterpret_cast<NodeBit&>(*node[0]).Value);
 						break;
-					case NODETYPE::FLOAT: sprintf_s(buffer, "%g", reinterpret_cast<NodeFloat&>(*node[0]).Value);
+					case NODETYPE::NODE_FLOAT: sprintf_s(buffer, "%g", reinterpret_cast<NodeFloat&>(*node[0]).Value);
 						break;
-					case NODETYPE::INTEGER: sprintf_s(buffer, "%lld", reinterpret_cast<NodeInteger&>(*node[0]).Value);
+					case NODETYPE::NODE_INTEGER: sprintf_s(buffer, "%lld", reinterpret_cast<NodeInteger&>(*node[0]).Value);
 						break;
-					case NODETYPE::STRING: return node[0];
-					case NODETYPE::BITS: {
+					case NODETYPE::NODE_STRING: return node[0];
+					case NODETYPE::NODE_BITS: {
 						auto newnode = std::make_shared<NodeString>("");
 						auto& bitsnode = reinterpret_cast<NodeBits&>(*node[0]);
 						auto bytestream = (binseq::u8*) bitsnode.Value.address();
@@ -1695,17 +1706,17 @@ namespace exec {
 				return std::make_shared<NodeBits>();
 			} else if (node.size() == 1) {
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BIT:
+					case NODETYPE::NODE_BIT:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence(reinterpret_cast<NodeBit&>(*node[0]).Value));
-					case NODETYPE::INTEGER:
+					case NODETYPE::NODE_INTEGER:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence((binseq::u64)reinterpret_cast<NodeInteger&>(*node[0]).Value));
-					case NODETYPE::FLOAT:
+					case NODETYPE::NODE_FLOAT:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence(*((binseq::u64*)&reinterpret_cast<NodeFloat&>(*node[0]).Value)));
-					case NODETYPE::BITS: return node[0];
-					case NODETYPE::STRING:
+					case NODETYPE::NODE_BITS: return node[0];
+					case NODETYPE::NODE_STRING:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence(reinterpret_cast<NodeString&>(*node[0]).Value.c_str()));
 						break;
@@ -1719,7 +1730,7 @@ namespace exec {
 			if (node.size() == 0) {
 				return std::make_shared<NodeArray>();
 			} else if (node.size() == 1) {
-				if (node[0]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("array can only receive integer as a parameter");
+				if (node[0]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("array can only receive integer as a parameter");
 				auto& size = reinterpret_cast<NodeInteger&>(*node[0]).Value;
 				auto newnode = std::make_shared<NodeArray>(size);
 				auto nothing = std::make_shared<Node>(NODETYPE::NODE_NONE);
@@ -1745,35 +1756,35 @@ namespace exec {
 			} else if (node.size() == 1) {
 				const char* r = "unknown";
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::ATOM:
+					case NODETYPE::NODE_ATOM:
 						switch (node[0]->GetAtomType()) {
-							case yytokentype::ID: r = "identifier";
+							case InstructionType::ID: r = "identifier";
 								break;
 							default: r = "unprocessed atom";
 								break;
 						}
 						break;
-					case NODETYPE::BIT: r = "bit";
+					case NODETYPE::NODE_BIT: r = "bit";
 						break;
-					case NODETYPE::BITS: r = "binseq";
+					case NODETYPE::NODE_BITS: r = "binseq";
 						break;
-					case NODETYPE::COMMAND: r = "command";
+					case NODETYPE::NODE_COMMAND: r = "command";
 						break;
-					case NODETYPE::FLOAT: r = "float";
+					case NODETYPE::NODE_FLOAT: r = "float";
 						break;
-					case NODETYPE::FUNCTION: r = "function";
+					case NODETYPE::NODE_FUNCTION: r = "function";
 						break;
-					case NODETYPE::INTEGER: r = "integer";
+					case NODETYPE::NODE_INTEGER: r = "integer";
 						break;
 					case NODETYPE::NODE_ERROR: r = "error";
 						break;
 					case NODETYPE::NODE_NONE: r = "void";
 						break;
-					case NODETYPE::STRING: r = "string";
+					case NODETYPE::NODE_STRING: r = "string";
 						break;
-					case NODETYPE::ARRAY: r = "array";
+					case NODETYPE::NODE_ARRAY: r = "array";
 						break;
-					case NODETYPE::OBJECT: r = "object";
+					case NODETYPE::NODE_OBJECT: r = "object";
 						break;
 				}
 				return std::make_shared<NodeString>(r);
@@ -1785,8 +1796,8 @@ namespace exec {
 		static std::shared_ptr<Node> get(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::STRING: {
-						if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("string can only be indexed by integer");
+					case NODETYPE::NODE_STRING: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeString&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						if (idx < 0 || idx >= container.size()) return ex->Error("string index out of bounds");
@@ -1794,8 +1805,8 @@ namespace exec {
 					}
 						break;
 
-					case NODETYPE::ARRAY: {
-						if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("array can only be indexed by integer");
+					case NODETYPE::NODE_ARRAY: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("array can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeArray&>(*node[0]).Vector;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						if (idx < 0 || idx >= container.size()) return ex->Error("string index out of bounds");
@@ -1803,8 +1814,8 @@ namespace exec {
 					}
 						break;
 
-					case NODETYPE::BITS: {
-						if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("string can only be indexed by integer");
+					case NODETYPE::NODE_BITS: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeBits&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						if (idx < 0 || idx >= container.size()) return ex->Error("string index out of bounds");
@@ -1813,8 +1824,8 @@ namespace exec {
 					}
 						break;
 
-					case NODETYPE::OBJECT: {
-						if (node[1]->GetNodeType() != NODETYPE::STRING) return ex->Error("object can only be indexed by string");
+					case NODETYPE::NODE_OBJECT: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("object can only be indexed by string");
 						auto& container = reinterpret_cast<NodeObject&>(*node[0]).Map;
 						auto& idx = reinterpret_cast<NodeString&>(*node[1]).Value;
 						if (container.find(idx) != container.end())
@@ -1833,9 +1844,9 @@ namespace exec {
 		static std::shared_ptr<Node> set(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 3) {
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::STRING: {
-						if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("string can only be indexed by integer");
-						if (node[2]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("value must be an integer");
+					case NODETYPE::NODE_STRING: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
+						if (node[2]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("value must be an integer");
 						auto& container = reinterpret_cast<NodeString&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = reinterpret_cast<NodeInteger&>(*node[2]).Value;
@@ -1845,8 +1856,8 @@ namespace exec {
 					}
 						break;
 
-					case NODETYPE::ARRAY: {
-						if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("array can only be indexed by integer");
+					case NODETYPE::NODE_ARRAY: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("array can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeArray&>(*node[0]).Vector;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = node[2];
@@ -1856,9 +1867,9 @@ namespace exec {
 					}
 						break;
 
-					case NODETYPE::BITS: {
-						if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("string can only be indexed by integer");
-						if (node[2]->GetNodeType() != NODETYPE::BIT) return ex->Error("value must be a bit");
+					case NODETYPE::NODE_BITS: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
+						if (node[2]->GetNodeType() != NODETYPE::NODE_BIT) return ex->Error("value must be a bit");
 						auto& container = reinterpret_cast<NodeBits&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = reinterpret_cast<NodeBit&>(*node[2]).Value;
@@ -1868,8 +1879,8 @@ namespace exec {
 					}
 						break;
 
-					case NODETYPE::OBJECT: {
-						if (node[1]->GetNodeType() != NODETYPE::STRING) return ex->Error("object can only be indexed by string");
+					case NODETYPE::NODE_OBJECT: {
+						if (node[1]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("object can only be indexed by string");
 						auto& container = reinterpret_cast<NodeObject&>(*node[0]).Map;
 						auto& idx = reinterpret_cast<NodeString&>(*node[1]).Value;
 						auto& val = node[2];
@@ -1887,11 +1898,11 @@ namespace exec {
 			if (node.size() == 1) {
 				long long val = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::STRING: val = reinterpret_cast<NodeString&>(*node[0]).Value.size();
+					case NODETYPE::NODE_STRING: val = reinterpret_cast<NodeString&>(*node[0]).Value.size();
 						break;
-					case NODETYPE::ARRAY: val = reinterpret_cast<NodeArray&>(*node[0]).Vector.size();
+					case NODETYPE::NODE_ARRAY: val = reinterpret_cast<NodeArray&>(*node[0]).Vector.size();
 						break;
-					case NODETYPE::BITS: val = reinterpret_cast<NodeBits&>(*node[0]).Value.size();
+					case NODETYPE::NODE_BITS: val = reinterpret_cast<NodeBits&>(*node[0]).Value.size();
 						break;
 					default: return ex->Error("parameter has no length, only array, string and binseq has length");
 				}
@@ -1942,12 +1953,12 @@ namespace exec {
 
 		static std::shared_ptr<Node> sel_head(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
-				if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("second parameter of head must be an integer");
+				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of head must be an integer");
 				auto count = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BITS: return std::make_shared<NodeBits>(binseq::head(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
-					case NODETYPE::STRING: return std::make_shared<NodeString>(vec_head(reinterpret_cast<NodeString&>(*node[0]).Value, count));
-					case NODETYPE::ARRAY: return std::make_shared<NodeArray>(vec_head(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
+					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::head(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
+					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_head(reinterpret_cast<NodeString&>(*node[0]).Value, count));
+					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_head(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
 					default: return ex->Error("head only works on sequences");
 				}
 			} else return ex->Error("head needs 2 parameters, a sequence and an integer");
@@ -1955,12 +1966,12 @@ namespace exec {
 
 		static std::shared_ptr<Node> sel_tail(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
-				if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("second parameter of tail must be an integer");
+				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of tail must be an integer");
 				auto count = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BITS: return std::make_shared<NodeBits>(binseq::tail(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
-					case NODETYPE::STRING: return std::make_shared<NodeString>(vec_tail(reinterpret_cast<NodeString&>(*node[0]).Value, count));
-					case NODETYPE::ARRAY: return std::make_shared<NodeArray>(vec_tail(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
+					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::tail(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
+					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_tail(reinterpret_cast<NodeString&>(*node[0]).Value, count));
+					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_tail(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
 					default: return ex->Error("tail only works on sequences");
 				}
 			} else return ex->Error("tail needs 2 parameters, a sequence and an integer");
@@ -1968,14 +1979,14 @@ namespace exec {
 
 		static std::shared_ptr<Node> sel_subseq(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 3) {
-				if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("second parameter of subseq must be an integer");
-				if (node[2]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("third parameter of subseq must be an integer");
+				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of subseq must be an integer");
+				if (node[2]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("third parameter of subseq must be an integer");
 				auto offset = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				auto count = reinterpret_cast<NodeInteger&>(*node[2]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BITS: return std::make_shared<NodeBits>(binseq::subseq(reinterpret_cast<NodeBits&>(*node[0]).Value, offset, count));
-					case NODETYPE::STRING: return std::make_shared<NodeString>(vec_subseq(reinterpret_cast<NodeString&>(*node[0]).Value, offset, count));
-					case NODETYPE::ARRAY: return std::make_shared<NodeArray>(vec_subseq(reinterpret_cast<NodeArray&>(*node[0]).Vector, offset, count));
+					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::subseq(reinterpret_cast<NodeBits&>(*node[0]).Value, offset, count));
+					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_subseq(reinterpret_cast<NodeString&>(*node[0]).Value, offset, count));
+					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_subseq(reinterpret_cast<NodeArray&>(*node[0]).Vector, offset, count));
 					default: return ex->Error("subseq only works on sequences");
 				}
 			} else return ex->Error("subseq needs 3 parameters, a sequence and two integers");
@@ -1983,12 +1994,12 @@ namespace exec {
 
 		static std::shared_ptr<Node> seq_repeat(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
-				if (node[1]->GetNodeType() != NODETYPE::INTEGER) return ex->Error("second parameter of repeat must be an integer");
+				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of repeat must be an integer");
 				auto count = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::BITS: return std::make_shared<NodeBits>(binseq::repeat(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
-					case NODETYPE::STRING: return std::make_shared<NodeString>(vec_repeat(reinterpret_cast<NodeString&>(*node[0]).Value, count));
-					case NODETYPE::ARRAY: return std::make_shared<NodeArray>(vec_repeat(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
+					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::repeat(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
+					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_repeat(reinterpret_cast<NodeString&>(*node[0]).Value, count));
+					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_repeat(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
 					default: return ex->Error("repeat only works on sequences");
 				}
 			} else return ex->Error("repeat needs 2 parameters, a sequence and an integer");
@@ -1996,7 +2007,7 @@ namespace exec {
 
 		static std::shared_ptr<Node> popcount(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 1) {
-				if (node[0]->GetNodeType() != NODETYPE::BITS) return ex->Error("the parameter of popcount must be binseq");
+				if (node[0]->GetNodeType() != NODETYPE::NODE_BITS) return ex->Error("the parameter of popcount must be binseq");
 				auto& seq = reinterpret_cast<NodeBits&>(*node[0]).Value;
 				auto count = binseq::popcount(seq);
 				return std::make_shared<NodeInteger>((long long)count);
@@ -2008,7 +2019,7 @@ namespace exec {
 				return ex->Error("verbose accepts only one or zero parameters of string which should contain the words tree, none, submit");
 			}
 			if (node.size() == 1) {
-				if (node[0]->GetNodeType() == NODETYPE::STRING) {
+				if (node[0]->GetNodeType() == NODETYPE::NODE_STRING) {
 					auto& node0 = reinterpret_cast<NodeString&>(*node[0]);
 					auto& str = node0.Value;
 					if (str.find("submit") != std::string::npos) ex->VERBOSE_SUBMIT = true;
@@ -2036,7 +2047,7 @@ namespace exec {
 				}
 				return arr;
 			} else if (node.size() == 1) {
-				if (node[0]->GetNodeType() == NODETYPE::OBJECT) {
+				if (node[0]->GetNodeType() == NODETYPE::NODE_OBJECT) {
 					auto& obj = reinterpret_cast<NodeObject&>(*node[0]);
 					auto arr = std::make_shared<NodeArray>();
 					std::vector<std::string> propList;
@@ -2054,10 +2065,10 @@ namespace exec {
 
 			static std::shared_ptr<Node> not(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 1) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& v = reinterpret_cast<NodeBit&>(*node[0]);
 						return std::make_shared<NodeBit>(!v.Value);
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& v = reinterpret_cast<NodeBits&>(*node[0]);
 						return std::make_shared<NodeBits>(binseq::not(v.Value));
 					} else return ex->Error("not operator only works on binseq or bit");
@@ -2066,11 +2077,11 @@ namespace exec {
 
 			static std::shared_ptr<Node> and(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>((l.Value && r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::and(l.Value, r.Value));
@@ -2080,11 +2091,11 @@ namespace exec {
 
 			static std::shared_ptr<Node> or(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>((l.Value || r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::or(l.Value, r.Value));
@@ -2094,11 +2105,11 @@ namespace exec {
 
 			static std::shared_ptr<Node> xor(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(l.Value != r.Value);
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::xor(l.Value, r.Value));
@@ -2108,11 +2119,11 @@ namespace exec {
 
 			static std::shared_ptr<Node> nand(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(!(l.Value && r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nand(l.Value, r.Value));
@@ -2122,11 +2133,11 @@ namespace exec {
 
 			static std::shared_ptr<Node> nor(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(!(l.Value || r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nor(l.Value, r.Value));
@@ -2136,11 +2147,11 @@ namespace exec {
 
 			static std::shared_ptr<Node> nxor(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BIT) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(l.Value == r.Value);
-					} else if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nxor(l.Value, r.Value));
@@ -2150,7 +2161,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> andc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::andc(l.Value, r.Value));
@@ -2160,7 +2171,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> orc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::orc(l.Value, r.Value));
@@ -2170,7 +2181,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> xorc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::xorc(l.Value, r.Value));
@@ -2180,7 +2191,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> nandc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nandc(l.Value, r.Value));
@@ -2190,7 +2201,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> norc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::norc(l.Value, r.Value));
@@ -2200,7 +2211,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> nxorc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nxorc(l.Value, r.Value));
@@ -2210,7 +2221,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> andr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::andr(l.Value, r.Value));
@@ -2220,7 +2231,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> orr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::orr(l.Value, r.Value));
@@ -2230,7 +2241,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> xorr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::xorr(l.Value, r.Value));
@@ -2240,7 +2251,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> nandr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nandr(l.Value, r.Value));
@@ -2250,7 +2261,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> norr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::norr(l.Value, r.Value));
@@ -2260,7 +2271,7 @@ namespace exec {
 
 			static std::shared_ptr<Node> nxorr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::BITS) {
+					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nxorr(l.Value, r.Value));
@@ -2351,7 +2362,7 @@ namespace exec {
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteCall(NodeCommand& node) {
 		auto fname = reinterpret_cast<NodeAtom*>(&*node.Children[0])->AtomText;
 		auto nodeptr = SymbolTable[fname];
-		if (nodeptr != nullptr && nodeptr->GetNodeType() == NODETYPE::FUNCTION) {
+		if (nodeptr != nullptr && nodeptr->GetNodeType() == NODETYPE::NODE_FUNCTION) {
 			auto function = reinterpret_cast<NodeFunction*>(&*nodeptr);
 			std::vector<std::shared_ptr<Node>> paramlist;
 			for (auto i = ++node.Children.begin(); i != node.Children.end(); i++) {

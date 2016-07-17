@@ -54,6 +54,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>./;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -72,6 +73,7 @@
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>./;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -98,6 +100,7 @@
     <None Include="program.binseq" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Compiler.cpp" />
     <ClCompile Include="exec.cpp" />
     <ClCompile Include="oscompatibility.cpp" />
     <ClCompile Include="yyerror.cpp" />
@@ -108,10 +111,13 @@
   <ItemGroup>
     <ClInclude Include="exec.hpp" />
     <ClInclude Include="Compiler.hpp" />
+    <ClInclude Include="InstructionType.hpp" />
+    <ClInclude Include="InstructionReader.hpp" />
+    <ClInclude Include="InstructionWriter.hpp" />
+    <ClInclude Include="unistd.h" />
     <ClInclude Include="yyerror.hpp" />
     <ClInclude Include="lexer.hpp" />
     <ClInclude Include="parser.hpp" />
-    <ClInclude Include="types.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\binseq_lib\binseq_lib.vcxproj">

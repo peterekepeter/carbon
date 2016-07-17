@@ -1,55 +1,24 @@
 #pragma once
-#include "parser.hpp"
+
+#include "InstructionWriter.hpp"
 
 namespace exec {
 
-	enum COMMANDTYPE {
-		END_STATEMENT,
-		ASSIGN,
-		CALL, //internal
-		CALLBEGIN,
-		CALLEND,
-		ADD,
-		SUBTRACT,
-		MULTIPLY,
-		DIVIDE,
-		POSITIVE,
-		NEGATIVE,
-		BLOCK, //internal
-		BLOCKBEGIN,
-		BLOCKEND,
-		COMP_LT,
-		COMP_GT,
-		COMP_LE,
-		COMP_GE,
-		COMP_EQ,
-		COMP_NE,
-		CONTROL,
-		LOCAL,
-		IF,
-		IFELSE,
-		LOOP0,
-		LOOP1,
-		LOOP2,
-		LOOP3,
-		RETURN0,
-		RETURN1,
-		BREAK,
-		CONTINUE,
-		FUNCTIONBEGIN,
-		FUNCTIONEND
-	};
-
 	class ExecutorImp;
 
-	class Executor {
+	class Executor : public InstructionWriter{
 	public:
 		Executor();
 		virtual ~Executor();
-		void submitAtom(const yytokentype type, const char* text);
-		void submitCommand(const COMMANDTYPE cmd);
+
+		//void submitAtom(const InstructionType type, const char* text);
+		//void submitCommand(const InstructionType cmd);
+		void WriteInstruction(InstructionType instruction) override;
+		void WriteInstruction(InstructionType instruction, const char* stringData) override;
+
 		const char* getLastAtomText(); //for better syntax error message
-		void SetShowPrompt(bool show);
+		void SetInteractiveMode(bool interactive);
+		bool GetInteractiveMode();
 		void Execute();
 		void ClearStatement(); //parse error recovery for console mode
 	private:

@@ -2,42 +2,42 @@
 
 
 %{
-#include "types.hpp"
 #include "lexer.hpp"
 #include "yyerror.hpp"
-#include "exec.hpp"
-using namespace exec;
-extern Executor ex;
+#include "InstructionWriter.hpp"
+extern InstructionWriter* yyInstructionWriter;
+#define INS_CMD(A)    yyInstructionWriter->WriteInstruction(InstructionType::A)
+#define INS_ATOM(A) yyInstructionWriter->WriteInstruction(InstructionType::A, yytext)
 %}
 
-%token USTR
-%token XSTR
-%token BSTR
-%token STR
-%token ID
-%token FLOAT
-%token XNUM
-%token BNUM
-%token ONUM
-%token NUM
-%token ENDST
-%token OP_EQ
-%token OP_NE
-%token OP_LE
-%token OP_GE
-%token KEY_FUNCTION
-%token KEY_LOOP
-%token KEY_ELSE
-%token KEY_IF
-%token KEY_THEN
-%token KEY_LOCAL
-%token KEY_BREAK
-%token KEY_CONTINUE
-%token KEY_RETURN
+%token TOK_USTR
+%token TOK_XSTR
+%token TOK_BSTR
+%token TOK_STR
+%token TOK_ID
+%token TOK_FLOAT
+%token TOK_XNUM
+%token TOK_BNUM
+%token TOK_ONUM
+%token TOK_NUM
+%token TOK_ENDST
+%token TOK_OP_EQ
+%token TOK_OP_NE
+%token TOK_OP_LE
+%token TOK_OP_GE
+%token TOK_KEY_FUNCTION
+%token TOK_KEY_LOOP
+%token TOK_KEY_ELSE
+%token TOK_KEY_IF
+%token TOK_KEY_THEN
+%token TOK_KEY_LOCAL
+%token TOK_KEY_BREAK
+%token TOK_KEY_CONTINUE
+%token TOK_KEY_RETURN
 
 %right '='
-%left OP_EQ OP_NE
-%left '<' '>' OP_LE OP_GE
+%left TOK_OP_EQ TOK_OP_NE
+%left '<' '>' TOK_OP_LE TOK_OP_GE
 %left '+' '-'
 %left '*' '/'
 
@@ -47,44 +47,44 @@ program : //nothing
         | program statement 
         ;
 
-statement : '{' {ex.submitCommand(COMMANDTYPE::BLOCKBEGIN);} program '}' {ex.submitCommand(COMMANDTYPE::BLOCKEND);}
-          | KEY_LOOP {ex.submitCommand(COMMANDTYPE::CONTROL);} loop 
-          | KEY_IF {ex.submitCommand(COMMANDTYPE::CONTROL);} '(' expression ')' statement else
-          | expression ENDST  { ex.submitCommand(COMMANDTYPE::END_STATEMENT); }
-          | KEY_RETURN ENDST { ex.submitCommand(COMMANDTYPE::RETURN0); }
-          | KEY_RETURN expression ENDST { ex.submitCommand(COMMANDTYPE::RETURN1); }
-          | KEY_BREAK ENDST { ex.submitCommand(COMMANDTYPE::BREAK); }
-          | KEY_CONTINUE ENDST { ex.submitCommand(COMMANDTYPE::CONTINUE); }
-          | ENDST
+statement : '{' {INS_CMD(BLOCKBEGIN);} program '}' {INS_CMD(BLOCKEND);}
+          | TOK_KEY_LOOP {INS_CMD(CONTROL);} loop 
+          | TOK_KEY_IF {INS_CMD(CONTROL);} '(' expression ')' statement else
+          | expression TOK_ENDST  { INS_CMD(END_STATEMENT); }
+          | TOK_KEY_RETURN TOK_ENDST { INS_CMD(RETURN0); }
+          | TOK_KEY_RETURN expression TOK_ENDST { INS_CMD(RETURN1); }
+          | TOK_KEY_BREAK TOK_ENDST { INS_CMD(BREAK); }
+          | TOK_KEY_CONTINUE TOK_ENDST { INS_CMD(CONTINUE); }
+          | TOK_ENDST
           ;
 
-else: KEY_ELSE statement {ex.submitCommand(COMMANDTYPE::IFELSE);} 
-    | {ex.submitCommand(COMMANDTYPE::IF);}
+else: TOK_KEY_ELSE statement {INS_CMD(IFELSE);} 
+    | {INS_CMD(IF);}
     ;
 
-loop: statement {ex.submitCommand(COMMANDTYPE::LOOP0);}
-    | '(' expression ')' statement {ex.submitCommand(COMMANDTYPE::LOOP1);}
-    | '(' expression ',' expression ')' statement {ex.submitCommand(COMMANDTYPE::LOOP2);} 
-    | '(' expression ',' expression ',' expression ')' statement {ex.submitCommand(COMMANDTYPE::LOOP3);} 
+loop: statement {INS_CMD(LOOP0);}
+    | '(' expression ')' statement {INS_CMD(LOOP1);}
+    | '(' expression ',' expression ')' statement {INS_CMD(LOOP2);} 
+    | '(' expression ',' expression ',' expression ')' statement {INS_CMD(LOOP3);} 
     ;
 
 
-expression: KEY_FUNCTION '(' { ex.submitCommand(COMMANDTYPE::FUNCTIONBEGIN); } idlist ')' statement { ex.submitCommand(COMMANDTYPE::FUNCTIONEND); }
-          | KEY_LOCAL expression { ex.submitCommand(COMMANDTYPE::LOCAL); }
-          | atom '(' { ex.submitCommand(COMMANDTYPE::CALLBEGIN); } calllist ')' { ex.submitCommand(COMMANDTYPE::CALLEND); }
-          | atom '=' expression       { ex.submitCommand(COMMANDTYPE::ASSIGN); }
-          | expression OP_EQ expression { ex.submitCommand(COMMANDTYPE::COMP_EQ);} 
-          | expression OP_NE expression { ex.submitCommand(COMMANDTYPE::COMP_NE);} 
-          | expression OP_LE expression { ex.submitCommand(COMMANDTYPE::COMP_LE);} 
-          | expression OP_GE expression { ex.submitCommand(COMMANDTYPE::COMP_GE);} 
-          | expression '<' expression { ex.submitCommand(COMMANDTYPE::COMP_LT);} 
-          | expression '>' expression { ex.submitCommand(COMMANDTYPE::COMP_GT);} 
-          | expression '+' expression { ex.submitCommand(COMMANDTYPE::ADD);} 
-          | expression '-' expression { ex.submitCommand(COMMANDTYPE::SUBTRACT); }
-          | expression '*' expression { ex.submitCommand(COMMANDTYPE::MULTIPLY); }
-          | expression '/' expression { ex.submitCommand(COMMANDTYPE::DIVIDE); }
-          | '+' expression            { ex.submitCommand(COMMANDTYPE::POSITIVE); }
-          | '-' expression            { ex.submitCommand(COMMANDTYPE::NEGATIVE); }
+expression: TOK_KEY_FUNCTION '(' { INS_CMD(FUNCTIONBEGIN); } idlist ')' statement { INS_CMD(FUNCTIONEND); }
+          | TOK_KEY_LOCAL expression { INS_CMD(LOCAL); }
+          | atom '(' { INS_CMD(CALLBEGIN); } calllist ')' { INS_CMD(CALLEND); }
+          | atom '=' expression       { INS_CMD(ASSIGN); }
+          | expression TOK_OP_EQ expression { INS_CMD(COMP_EQ);} 
+          | expression TOK_OP_NE expression { INS_CMD(COMP_NE);} 
+          | expression TOK_OP_LE expression { INS_CMD(COMP_LE);} 
+          | expression TOK_OP_GE expression { INS_CMD(COMP_GE);} 
+          | expression '<' expression { INS_CMD(COMP_LT);} 
+          | expression '>' expression { INS_CMD(COMP_GT);} 
+          | expression '+' expression { INS_CMD(ADD);} 
+          | expression '-' expression { INS_CMD(SUBTRACT); }
+          | expression '*' expression { INS_CMD(MULTIPLY); }
+          | expression '/' expression { INS_CMD(DIVIDE); }
+          | '+' expression            { INS_CMD(POSITIVE); }
+          | '-' expression            { INS_CMD(NEGATIVE); }
           | '(' expression ')'
           | atom 
           ;
@@ -94,7 +94,7 @@ idlist: //nothing
       | identifier
       ;
 
-identifier: ID { ex.submitAtom(ID, yytext); }
+identifier: TOK_ID { INS_ATOM(ID); }
           ;
 
 calllist: //nothing
@@ -102,16 +102,16 @@ calllist: //nothing
         | expression
         ;
 
-atom: USTR          { ex.submitAtom(USTR, yytext); }
-    | XSTR          { ex.submitAtom(XSTR, yytext); }
-    | BSTR          { ex.submitAtom(BSTR, yytext); }
-    | STR           { ex.submitAtom(STR, yytext); }
-    | ID            { ex.submitAtom(ID, yytext); }
-    | FLOAT         { ex.submitAtom(FLOAT, yytext); }
-    | XNUM          { ex.submitAtom(XNUM, yytext); }
-    | BNUM          { ex.submitAtom(BNUM, yytext); }
-    | ONUM          { ex.submitAtom(ONUM, yytext); }
-    | NUM           { ex.submitAtom(NUM, yytext); }
+atom: TOK_USTR          { INS_ATOM(USTR); }
+    | TOK_XSTR          { INS_ATOM(XSTR); }
+    | TOK_BSTR          { INS_ATOM(BSTR); }
+    | TOK_STR           { INS_ATOM(STR); }
+    | TOK_ID            { INS_ATOM(ID); }
+    | TOK_FLOAT         { INS_ATOM(FLOAT); }
+    | TOK_XNUM          { INS_ATOM(XNUM); }
+    | TOK_BNUM          { INS_ATOM(BNUM); }
+    | TOK_ONUM          { INS_ATOM(ONUM); }
+    | TOK_NUM           { INS_ATOM(NUM); }
     ;
 
 %%
