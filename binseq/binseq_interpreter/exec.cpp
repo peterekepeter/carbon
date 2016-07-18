@@ -246,6 +246,7 @@ namespace exec {
 		inline std::shared_ptr<Node> ExecuteBlock(NodeCommand& node);
 		inline std::shared_ptr<Node> ExecuteConditional(NodeCommand& node);
 		inline std::shared_ptr<Node> ExecuteLoop(NodeCommand& node);
+		inline std::shared_ptr<Node> ExecuteMemberOperator(NodeCommand& node);
 		inline std::shared_ptr<Node> Error(std::string message);
 	};
 
@@ -386,6 +387,7 @@ namespace exec {
 			case InstructionType::SUBTRACT:
 			case InstructionType::MULTIPLY:
 			case InstructionType::DIVIDE:
+			case InstructionType::MEMBER:
 			case InstructionType::COMP_EQ:
 			case InstructionType::COMP_NE:
 			case InstructionType::COMP_GE:
@@ -689,6 +691,7 @@ namespace exec {
 			case InstructionType::LOOP1: return "LOOP1";
 			case InstructionType::LOOP2: return "LOOP2";
 			case InstructionType::LOOP3: return "LOOP3";
+			case InstructionType::MEMBER: return "MEMBER";
 			default: throw ImplementationException("Unhandled commandtype.");
 		}
 	}
@@ -1212,6 +1215,31 @@ namespace exec {
 
 	}
 
+	inline std::shared_ptr<Node> ExecutorImp::ExecuteMemberOperator(NodeCommand& node) {
+		if (node.Children.size() == 2) {
+			auto lvalue = ExecuteStatement(node.Children[0]);
+			auto rvalue = reinterpret_cast<Node*>(&*node.Children[1]);
+			if (rvalue->GetNodeType() == NODETYPE::NODE_ATOM) {
+				auto atom = reinterpret_cast<NodeAtom*>(rvalue);
+				if (atom->GetAtomType() == InstructionType::ID) {
+					auto& idx = atom->AtomText;
+					if (lvalue->GetNodeType() == NODETYPE::NODE_OBJECT) {
+						auto& object = reinterpret_cast<NodeObject&>(*lvalue);
+						auto& container = object.Map;
+						if (container.find(idx) != container.end())
+							return container[idx];
+						else
+							return std::make_shared<Node>(NODETYPE::NODE_NONE);
+					}
+					else return Error("left side of an object member operator must be an object");
+				}
+				else return Error(atom->AtomText + " is not a valid indentifier");
+			}
+			else return Error("right side of an object member operator must be an identifier");
+		}
+		else throw ImplementationException("Member operator requires 2 parameters.");
+	}
+
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteAssignment(NodeCommand& node) {
 		if (node.Children.size() == 2) {
 			auto lvalue = reinterpret_cast<Node*>(&*node.Children[0]);
@@ -1329,6 +1357,10 @@ namespace exec {
 				//assignment :)
 			case InstructionType::ASSIGN:
 				result = ExecuteAssignment(node);
+				break;
+				//object member operator
+			case InstructionType::MEMBER:
+				result = ExecuteMemberOperator(node);
 				break;
 				//function calls
 			case InstructionType::CALL:

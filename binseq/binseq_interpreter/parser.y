@@ -40,6 +40,7 @@ extern InstructionWriter* yyInstructionWriter;
 %left '<' '>' TOK_OP_LE TOK_OP_GE
 %left '+' '-'
 %left '*' '/'
+%left '.'
 
 %%
 
@@ -83,6 +84,7 @@ expression: TOK_KEY_FUNCTION '(' { INS_CMD(FUNCTIONBEGIN); } idlist ')' statemen
           | expression '-' expression { INS_CMD(SUBTRACT); }
           | expression '*' expression { INS_CMD(MULTIPLY); }
           | expression '/' expression { INS_CMD(DIVIDE); }
+		  | expression '.' expression { INS_CMD(MEMBER); }
           | '+' expression            { INS_CMD(POSITIVE); }
           | '-' expression            { INS_CMD(NEGATIVE); }
           | '(' expression ')'

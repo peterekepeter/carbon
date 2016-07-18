@@ -15,12 +15,19 @@ enum class InstructionType : unsigned char {
 	BLOCK, //internal
 	BLOCKBEGIN,
 	BLOCKEND,
+	ARRAY, //internal
+	ARRAYBEGIN,
+	ARRAYEND,
+	OBJECT, //internal
+	OBJECTBEGIN,
+	OBJECTEND,
 	COMP_LT,
 	COMP_GT,
 	COMP_LE,
 	COMP_GE,
 	COMP_EQ,
 	COMP_NE,
+	MEMBER,
 	CONTROL,
 	LOCAL,
 	IF,
