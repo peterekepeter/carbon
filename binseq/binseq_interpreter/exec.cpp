@@ -545,7 +545,14 @@ namespace exec {
 						for (int i=collector.size(); i>0; i-=2)
 						{
 							auto& key = reinterpret_cast<NodeAtom&>(*collector[i - 1]);
-							map[key.AtomText] = collector[i - 2];
+							if (key.GetNodeType() == NODE_STRING)
+							{
+								auto& str = reinterpret_cast<NodeString&>(key);
+								map[str.Value] = collector[i - 2];
+							} else
+							{
+								map[key.AtomText] = collector[i - 2];
+							}
 						}
 						imp->stack.push(objectNode);
 						finished = true;
