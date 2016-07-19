@@ -531,8 +531,35 @@ namespace exec {
 				}
 			}
 				break;
-			case InstructionType::OBJECTEND:
-				imp->stack.push(std::make_shared<NodeObject>());
+			case InstructionType::OBJECTEND: {
+				std::vector<std::shared_ptr<Node>> collector;
+				bool finished = false;
+				while(!finished)
+				{
+					auto& top = imp->stack.top();
+					if (top->IsCommand() && top->GetCommandType() == InstructionType::OBJECTBEGIN)
+					{
+						imp->stack.pop();
+						auto objectNode = std::make_shared<NodeObject>();
+						auto& map = objectNode->Map;
+						for (int i=collector.size(); i>0; i-=2)
+						{
+							auto& key = reinterpret_cast<NodeAtom&>(*collector[i - 1]);
+							map[key.AtomText] = collector[i - 2];
+						}
+						imp->stack.push(objectNode);
+						finished = true;
+					}
+					else
+					{
+						collector.push_back(top);
+						imp->stack.pop();
+						collector.push_back(imp->stack.top());
+						imp->stack.pop();
+					}
+				}
+
+			}
 				break;
 			case InstructionType::RETURN1:
 			case InstructionType::LOCAL:

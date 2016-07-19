@@ -93,7 +93,8 @@ expression: TOK_KEY_FUNCTION '(' { INS_CMD(FUNCTIONBEGIN); } idlist ')' statemen
           | atom 
           ;
 
-keyvaluelist: keyvaluelist ',' objectkey ':' expression  
+keyvaluelist: //nothing
+			| keyvaluelist ',' objectkey ':' expression  
 			| objectkey ':' expression
 			;
 
