@@ -505,10 +505,34 @@ namespace exec {
 				imp->SymbolTable.Push();
 				imp->stack.push(node);
 				break;
+			case InstructionType::ARRAYBEGIN:
+			case InstructionType::OBJECTBEGIN:
 			case InstructionType::RETURN0:
 			case InstructionType::BREAK:
 			case InstructionType::CONTINUE:
 				imp->stack.push(node);
+				break;
+			case InstructionType::ARRAYEND: {
+				auto arrayNode = std::make_shared<NodeArray>();
+				auto& vector = arrayNode->Vector;
+				bool finished = false;
+				while(!finished) {
+					auto& top = imp->stack.top();
+					if (top->IsCommand() && top->GetCommandType() == InstructionType::ARRAYBEGIN)
+					{
+						imp->stack.pop();
+						std::reverse(vector.begin(), vector.end());
+						imp->stack.push(arrayNode);
+						finished = true;
+					} else {
+						vector.push_back(top);
+						imp->stack.pop();
+					}
+				}
+			}
+				break;
+			case InstructionType::OBJECTEND:
+				imp->stack.push(std::make_shared<NodeObject>());
 				break;
 			case InstructionType::RETURN1:
 			case InstructionType::LOCAL:

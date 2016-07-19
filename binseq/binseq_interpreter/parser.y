@@ -73,6 +73,8 @@ loop: statement {INS_CMD(LOOP0);}
 expression: TOK_KEY_FUNCTION '(' { INS_CMD(FUNCTIONBEGIN); } idlist ')' statement { INS_CMD(FUNCTIONEND); }
           | TOK_KEY_LOCAL expression { INS_CMD(LOCAL); }
           | atom '(' { INS_CMD(CALLBEGIN); } calllist ')' { INS_CMD(CALLEND); }
+		  | '{' { INS_CMD(OBJECTBEGIN); } keyvaluelist '}' { INS_CMD(OBJECTEND); }
+		  | '[' { INS_CMD(ARRAYBEGIN); } calllist ']' { INS_CMD(ARRAYEND); }
           | expression '=' expression       { INS_CMD(ASSIGN); }
           | expression TOK_OP_EQ expression { INS_CMD(COMP_EQ);} 
           | expression TOK_OP_NE expression { INS_CMD(COMP_NE);} 
@@ -90,6 +92,14 @@ expression: TOK_KEY_FUNCTION '(' { INS_CMD(FUNCTIONBEGIN); } idlist ')' statemen
           | '(' expression ')'
           | atom 
           ;
+
+keyvaluelist: keyvaluelist ',' objectkey ':' expression  
+			| objectkey ':' expression
+			;
+
+objectkey: TOK_ID { INS_ATOM(ID); }
+		 | TOK_STR { INS_ATOM(STR); }
+		 ;
 
 idlist: //nothing
       | idlist ',' identifier
