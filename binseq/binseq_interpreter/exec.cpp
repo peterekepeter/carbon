@@ -1249,7 +1249,22 @@ namespace exec {
 				if (atom->GetAtomType() == InstructionType::ID) {
 					return this->SymbolTable[atom->AtomText] = rvalue;
 				} else return Error(atom->AtomText + " is not a valid indentifier");
-			} else return Error("left side of an assignment must be an identifier");
+			} else if (lvalue->GetCommandType() == InstructionType::MEMBER)
+			{
+				auto& member = reinterpret_cast<NodeCommand&>(*lvalue);
+				auto container = ExecuteStatement(member.Children[0]);
+				if (container->GetNodeType() != NODE_OBJECT)
+					return Error("left side of member operator is not an object");
+				auto& object = reinterpret_cast<NodeObject&>(*container);
+				auto& map = object.Map;
+				auto& index = member.Children[1];
+				if (index->GetAtomType() != InstructionType::ID)
+					return Error("right side of member oeprator is not an identifier");
+				auto& idx = reinterpret_cast<NodeAtom&>(*index).AtomText;
+				map[idx] = rvalue;
+				return rvalue;
+			}
+			return Error("left side of an assignment must be an identifier");
 		} else throw ImplementationException("Assignment requires 2 parameters.");
 	}
 
@@ -1262,6 +1277,7 @@ namespace exec {
 				case NODETYPE::NODE_RETURN: return result;
 				case NODETYPE::NODE_BREAK: return result;
 				case NODETYPE::NODE_CONTINUE: return result;
+				default: continue;
 			}
 		}
 		return result;
@@ -1481,16 +1497,23 @@ namespace exec {
 						auto& n = reinterpret_cast<NodeObject&>(**i);
 						printf("object: (");
 						auto i = n.Map.begin();
-						while (true) {
-							auto j = i;
-							j++;
-							if (j == n.Map.end()) break;
-							printf("%s: ", i->first.c_str());
-							view_primitive(*(i->second), ", ");
-							i = j;
+						if (i == n.Map.end())
+						{
+							printf(") ");
 						}
-						printf("%s: ", i->first.c_str());
-						view_primitive(*(i->second), ") ");
+						else
+						{
+							while (true) {
+								auto j = i;
+								j++;
+								if (j == n.Map.end()) break;
+								printf("%s: ", i->first.c_str());
+								view_primitive(*(i->second), ", ");
+								i = j;
+							}
+							printf("%s: ", i->first.c_str());
+							view_primitive(*(i->second), ") ");
+						}
 					}
 						break;
 					case NODETYPE::NODE_BITS: {
