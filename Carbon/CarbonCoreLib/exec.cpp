@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <queue>
 
-#include "../binseq_lib/binseq.hpp"
+#include "../BinseqLib/binseq.hpp"
 
 #pragma warning(disable:4482)
 

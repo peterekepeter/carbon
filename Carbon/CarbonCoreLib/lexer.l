@@ -1,4 +1,4 @@
-%option outfile="lexer.cpp"
+%option outfile="generated/lexer.cpp"
 %option noyywrap
 %option yylineno
 

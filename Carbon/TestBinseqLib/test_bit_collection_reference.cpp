@@ -1,8 +1,7 @@
                      
 #include "testing.h"
-#include "../binseq_lib/binseq.hpp"
-#include "../binseq_lib/bit_collection.hpp"
 #include <exception>
+#include "../BinseqLib/bit_collection.hpp"
 
 using namespace binseq;
 

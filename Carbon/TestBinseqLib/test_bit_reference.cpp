@@ -1,7 +1,7 @@
           
 #include "testing.h"
-#include "../binseq_lib/binseq.hpp"   
 #include <exception> 
+#include "../BinseqLib/bit_reference.hpp"
 using namespace binseq;
 
 static int bit_reference_test0(){
