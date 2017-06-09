@@ -1,5 +1,5 @@
 #include "exec.hpp"
-#include <stdio.h> 
+#include <cstdio> 
 #include <string>
 #include "Compiler.hpp"
 
@@ -20,7 +20,7 @@ void submitArguments(InstructionWriter &output, int argc, char** argv) {
 	output.WriteInstruction(InstructionType::ID, "array");
 	output.WriteInstruction(InstructionType::CALLBEGIN);
 	char buffer[256];
-	sprintf(buffer, "%d", argc);
+	std::sprintf(buffer, "%d", argc);
 	output.WriteInstruction(InstructionType::NUM, buffer);
 	output.WriteInstruction(InstructionType::CALLEND);
 	output.WriteInstruction(InstructionType::ASSIGN);
@@ -33,7 +33,7 @@ void submitArguments(InstructionWriter &output, int argc, char** argv) {
 		output.WriteInstruction(InstructionType::ID, "arguments");
 		//2
 		char buffer[256];
-		sprintf(buffer, "%d", i);
+		std::sprintf(buffer, "%d", i);
 		output.WriteInstruction(InstructionType::NUM, buffer);
 		//3
 
