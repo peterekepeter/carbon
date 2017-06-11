@@ -233,5 +233,73 @@ namespace UnitTestCarbonCompilerLib
 			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
 		}
 
+
+		TEST_METHOD(LexerSyntaxSymbols)
+		{
+			std::istringstream iss("(){;}[]");
+			Lexer lexer(iss);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::ParanthesisOpen);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::ParanthesisClose);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::BracesOpen);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::EndStatement);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::BracesClose);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::BracketOpen);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::BracketClose);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
+		}
+
+		TEST_METHOD(LexerSyntaxTestAssignment)
+		{
+			std::istringstream iss("x=4*y+13;");
+			Lexer lexer(iss);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Id);
+			Assert::AreEqual("x", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Assign);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Number);
+			Assert::AreEqual("4", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Multiply);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Id);
+			Assert::AreEqual("y", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Plus);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Number);
+			Assert::AreEqual("13", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::EndStatement);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
+		}
+
+		TEST_METHOD(LexerSyntaxTestFunction)
+		{
+			std::istringstream iss("function double(x) { return x*2; }");
+			Lexer lexer(iss);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Function);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Id);
+			Assert::AreEqual("double", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::ParanthesisOpen);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Id);
+			Assert::AreEqual("x", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::ParanthesisClose);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::BracesOpen);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Return);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Id);
+			Assert::AreEqual("x", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Multiply);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Number);
+			Assert::AreEqual("2", lexer.GetData());
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::EndStatement);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::BracesClose);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
+		}
+
+		TEST_METHOD(LexerFileBeginEnd)
+		{
+			std::istringstream iss("");
+			Lexer lexer(iss);
+			Assert::IsTrue(lexer.GetToken() == Token::FileBegin);
+			lexer.MoveNext(); 
+			Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
+		}
+
+
+
 	};
 }

@@ -317,6 +317,24 @@ void Carbon::Compiler::Lexer::ParseOperator()
 		token = Token::Assign;
 		continueParsing = true; // might be ==
 		break;
+	case '(':
+		token = Token::ParanthesisOpen;
+		break;
+	case ')':
+		token = Token::ParanthesisClose;
+		break;
+	case '[':
+		token = Token::BracketOpen;
+		break;
+	case ']':
+		token = Token::BracketClose;
+		break;
+	case '{':
+		token = Token::BracesOpen;
+		break;
+	case '}':
+		token = Token::BracesClose;
+		break;
 	default:
 		acceptFirst = false;
 		break;

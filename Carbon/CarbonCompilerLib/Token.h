@@ -26,6 +26,12 @@ namespace Carbon
 
 			// syntax symbols
 
+			ParanthesisOpen,
+			ParanthesisClose,
+			BracketOpen,
+			BracketClose,
+			BracesOpen,
+			BracesClose,
 			EndStatement,
 
 			// operators
