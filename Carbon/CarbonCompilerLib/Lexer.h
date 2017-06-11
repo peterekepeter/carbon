@@ -23,11 +23,17 @@ namespace Carbon
 			// get the indetified token data, like "Hello Wolrd"
 			const char* GetData();
 
-			// get current line
+			// get token start line
 			int GetLine(); 
 
-			// get current position in line
+			// get token position in line
 			int GetPosition(); 
+			
+			// return the ending position for token
+			int GetPositionEnd();
+
+			// return the ending line for token
+			int GetLineEnd();
 
 			Lexer(const Lexer& other) = delete; // disallow copy
 			Lexer& operator =(const Lexer& other) = delete; // disallow copy

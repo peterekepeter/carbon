@@ -33,6 +33,16 @@ int Carbon::Compiler::Lexer::GetPosition()
 	return this->tokenStartPosition;
 }
 
+int Carbon::Compiler::Lexer::GetPositionEnd()
+{
+	return this->positionCounter;
+}
+
+int Carbon::Compiler::Lexer::GetLineEnd()
+{
+	return this->lineCounter;
+}
+
 // parse in a number, consuming character from input
 void Carbon::Compiler::Lexer::ParseNumber()
 {
