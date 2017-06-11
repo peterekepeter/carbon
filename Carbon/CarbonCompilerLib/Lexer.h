@@ -37,6 +37,7 @@ namespace Carbon
 			void ParseIdOrString();
 			void ParseString();
 			void ParseWhitespace();
+			void ParseOperator();
 			Token DetectKeyword(const std::string& data);
 			void StartToken();
 			int lineCounter, positionCounter, tokenStartPosition, tokenStartLine;

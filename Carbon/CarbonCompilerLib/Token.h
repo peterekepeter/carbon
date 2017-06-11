@@ -37,10 +37,11 @@ namespace Carbon
 			Assign,
 			Less,
 			Greater,
-			Add,
-			Subtract,
+			Plus,
+			Minus,
 			Multiply,
 			Divide,
+			Not,
 			Member,
 
 			// keywords

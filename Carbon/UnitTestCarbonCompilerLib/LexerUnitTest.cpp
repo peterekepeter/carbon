@@ -214,5 +214,24 @@ namespace UnitTestCarbonCompilerLib
 			Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
 		}
 
+
+		TEST_METHOD(LexerOperators)
+		{
+			std::istringstream iss("+ - * / == != <= >= < > !");
+			Lexer lexer(iss);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Plus);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Minus);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Multiply);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Divide);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Equals);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::NotEquals);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::LessOrEqual);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::GreaterOrEqual);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Less);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Greater);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::Not);
+			lexer.MoveNext(); Assert::IsTrue(lexer.GetToken() == Token::FileEnd);
+		}
+
 	};
 }

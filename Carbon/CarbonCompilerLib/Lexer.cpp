@@ -276,6 +276,101 @@ void Carbon::Compiler::Lexer::ParseWhitespace()
 	}
 }
 
+void Carbon::Compiler::Lexer::ParseOperator()
+{
+	// first char peek
+	auto continueParsing = false;
+	auto acceptFirst = true;
+	switch (input.peek()) {
+	case '+':
+		token = Token::Plus;
+		break;
+	case '-':
+		token = Token::Minus;
+		break;
+	case '<':
+		token = Token::Less;
+		continueParsing = true; // need to check next char, might be <=
+		break;
+	case '>':
+		token = Token::Greater;
+		continueParsing = true; // might be >=
+		break;
+		break;
+	case '!':
+		token = Token::Not;
+		continueParsing = true; // might be !=
+		break;
+	case '*':
+		token = Token::Multiply;
+		break;
+	case '/':
+		token = Token::Divide;
+		break;
+	case '.':
+		token = Token::Member;
+		break;
+	case ';': 
+		token = Token::EndStatement;
+		break;
+	case '=':
+		token = Token::Assign;
+		continueParsing = true; // might be ==
+		break;
+	default:
+		acceptFirst = false;
+		break;
+	}
+	// first char has been accepted
+	if (acceptFirst) {
+		positionCounter += 1;
+		input.get();
+	}
+	if (!continueParsing)
+	{
+		// single char operators exit here
+		return;
+	}
+	// second char for two char operators
+	continueParsing = false;
+	auto acceptSecond = true;
+	switch (input.peek())
+	{
+	case '=':
+		if (token == Token::Assign) { // equals operator == 
+			token = Token::Equals;
+		}
+		else if (token == Token::Not) {
+			token = Token::NotEquals;
+		}
+		else if (token == Token::Less) {
+			token = Token::LessOrEqual;
+		}
+		else if (token == Token::Greater) {
+			token = Token::GreaterOrEqual;
+		}
+		else {
+			acceptSecond = false;
+		}
+		break;
+	default:
+		acceptSecond = false;
+		break;
+	}
+	if (acceptSecond) 
+	{
+		positionCounter += 1;
+		input.get();
+	}
+	if (!continueParsing) 
+	{
+		// operators with 1 or 2 chars exit here
+		return;
+	}
+	// if required continue here for 3 char operators
+	throw std::logic_error("This line should never execute.");
+}
+
 Carbon::Compiler::Token Carbon::Compiler::Lexer::DetectKeyword(const std::string& token)
 {
 	// needs to be verified of keywords are added or changed
@@ -372,6 +467,17 @@ void Carbon::Compiler::Lexer::MoveNext()
 		case '"':
 			StartToken();
 			ParseString();
+			parsing = false;
+			break;
+
+		case '+': case '-': case '*': case '/': 
+		case '=': case '!': case '<': case '>':
+		case '&': case '|': case '^': case '~':
+		case '(': case ')': case '{': case '}':
+		case '[': case ']': case '.': case ',':
+		case ';':
+			StartToken();
+			ParseOperator();
 			parsing = false;
 			break;
 
