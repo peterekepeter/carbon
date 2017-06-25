@@ -1,6 +1,6 @@
 #pragma once
 
-#include "InstructionType.hpp"
+#include "InstructionType.h"
 
 class InstructionWriter
 {

@@ -18,6 +18,14 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="InstructionReader.h" />
+    <ClInclude Include="InstructionType.h" />
+    <ClInclude Include="InstructionWriter.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Dummy.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F8BE3744-AE79-4846-9C99-C82547C2D9B3}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
