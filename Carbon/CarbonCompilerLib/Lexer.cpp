@@ -345,6 +345,12 @@ void Carbon::Compiler::Lexer::ParseOperator()
 	case '}':
 		token = Token::BracesClose;
 		break;
+	case ':':
+		token = Token::Colon;
+		break;
+	case ',':
+		token = Token::Comma;
+		break;
 	default:
 		acceptFirst = false;
 		break;

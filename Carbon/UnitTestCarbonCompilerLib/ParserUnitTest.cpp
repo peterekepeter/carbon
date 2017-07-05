@@ -28,6 +28,22 @@ namespace UnitTestCarbonCompilerLib
 			Assert::IsFalse(result);
 		}
 
+		TEST_METHOD(ParserExpressionAssignment)
+		{
+			ss input("x=42"); Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext());
+			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);
+			Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext());
+			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);
+			Assert::AreEqual(parser.ReadStringData(), "42");
+			Assert::IsTrue(parser.MoveNext());
+			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());
+			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
 
 
 
