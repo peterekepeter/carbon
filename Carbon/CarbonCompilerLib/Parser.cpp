@@ -248,6 +248,26 @@ bool Carbon::Compiler::Parser::ParseExpression()
 		instructionData = lexer.GetData();
 		lexer.MoveNext(); // consume token
 		return false; // yield
+	case Token::ParanthesisOpen:
+		opStack.push(token);
+		lexer.MoveNext(); // consume token
+		return true; // continue parsing
+	case Token::ParanthesisClose:
+		if (opStack.size() <= 0) {
+			throw ParseError("mismatched paranthesis");
+		}
+		if (opStack.top() == Token::ParanthesisOpen) {
+			lexer.MoveNext(); // consume token
+			opStack.pop();
+			return true; // continue parsing
+		}
+		else {
+			instruction = TokenToInfixOperator(opStack.top());
+			opStack.pop();
+			return false; // yield operator
+		}
+
+		return true;
 	// operators
 	case Token::Plus:
 	case Token::Minus:
