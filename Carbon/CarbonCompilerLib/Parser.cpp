@@ -249,6 +249,16 @@ bool Carbon::Compiler::Parser::ParseExpression()
 		lexer.MoveNext(); // consume token
 		return false; // yield
 	// operators
+	case Token::Plus:
+	case Token::Minus:
+	case Token::Multiply:
+	case Token::Divide:
+	case Token::Equals:
+	case Token::NotEquals:
+	case Token::Greater:
+	case Token::GreaterOrEqual:
+	case Token::Less:
+	case Token::LessOrEqual:
 	case Token::Assign: {
 		bool push = true;
 		if (opStack.size() > 0)
