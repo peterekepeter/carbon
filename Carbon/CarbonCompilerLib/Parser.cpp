@@ -33,6 +33,9 @@ bool Carbon::Compiler::Parser::MoveNext()
 	case State::Expression:
 		parsing = ParseExpression();
 		break;
+	case State::ExpressionPopUnary:
+		parsing = ParseExpressionPopUnary();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -100,7 +103,10 @@ bool Carbon::Compiler::Parser::ParseStatement()
 	case Token::NumberBinary:
 	case Token::NumberHexadecimal:
 	case Token::NumberOctal:
+	case Token::Minus:
+	case Token::Plus:
 		state.push(State::Expression); // start parsing expression
+		opStack.push(Op::Expression);
 		return true; //continue parsing
 	case Token::FileEnd:
 		state.pop();
@@ -163,11 +169,14 @@ bool Carbon::Compiler::Parser::ParseBlockTemp()
 	state.pop(); // clear blocktemp
 	state.push(State::Block); // push block
 	state.push(State::Expression); // and since we have an id or string, we're in expression
+	opStack.push(Op::Expression);
 	if (tempToken == Token::Id) {
 		instruction = InstructionType::ID;
+		opStack.push(Op::Term);
 	}
 	else if (tempToken == Token::String) {
 		instruction = InstructionType::STR;
+		opStack.push(Op::Term);
 	} else {
 		throw std::runtime_error("unexpected parser state");
 	}
@@ -210,21 +219,23 @@ bool Carbon::Compiler::Parser::ParseObjectTemp()
 	return false;
 }
 
-InstructionType Carbon::Compiler::Parser::TokenToInfixOperator(Token top) const
+InstructionType Carbon::Compiler::Parser::OpToInstructionType(Op top) const
 {
 	switch (top)
 	{
-	case Token::Assign: return InstructionType::ASSIGN;
-	case Token::Plus: return InstructionType::ADD;
-	case Token::Minus: return InstructionType::SUBTRACT;
-	case Token::Multiply: return InstructionType::MULTIPLY;
-	case Token::Divide: return InstructionType::DIVIDE;
-	case Token::Equals: return InstructionType::COMP_EQ;
-	case Token::NotEquals: return InstructionType::COMP_NE;
-	case Token::Greater: return InstructionType::COMP_GT;
-	case Token::GreaterOrEqual: return InstructionType::COMP_GE;
-	case Token::Less: return InstructionType::COMP_LT;
-	case Token::LessOrEqual: return InstructionType::COMP_LE;
+	case Op::Assign: return InstructionType::ASSIGN;
+	case Op::Add: return InstructionType::ADD;
+	case Op::Subtract: return InstructionType::SUBTRACT;
+	case Op::Multiply: return InstructionType::MULTIPLY;
+	case Op::Divide: return InstructionType::DIVIDE;
+	case Op::Equals: return InstructionType::COMP_EQ;
+	case Op::NotEquals: return InstructionType::COMP_NE;
+	case Op::Greater: return InstructionType::COMP_GT;
+	case Op::GreaterOrEqual: return InstructionType::COMP_GE;
+	case Op::Less: return InstructionType::COMP_LT;
+	case Op::LessOrEqual: return InstructionType::COMP_LE;
+	case Op::UnaryMinus: return InstructionType::NEGATIVE;
+	case Op::UnaryPlus: return InstructionType::POSITIVE;
 	default:
 		throw std::runtime_error("unexpected parser state");
 	}
@@ -244,25 +255,51 @@ bool Carbon::Compiler::Parser::ParseExpression()
 	case Token::NumberBinary:
 	case Token::NumberHexadecimal:
 	case Token::NumberOctal:
+		if (opStack.top() == Op::Term)
+		{
+			throw ParseError("expecting operator or end of expression");
+		}
 		instruction = TokenToAtom(token);
 		instructionData = lexer.GetData();
 		lexer.MoveNext(); // consume token
+		// check if unary on top of opstack
+		if (OpIsUnary(opStack.top()))
+		{
+			// pop unary operators after yielding
+			state.push(State::ExpressionPopUnary);
+		}
+		else
+		{
+			opStack.push(Op::Term);
+		}
 		return false; // yield
 	case Token::ParanthesisOpen:
-		opStack.push(token);
+		// if (expressionPrevAtom) // function call
+		opStack.push(Op::Paranthesis);
 		lexer.MoveNext(); // consume token
+		expressionPrevAtom = false;
+		expressionPrevOp = false;
 		return true; // continue parsing
 	case Token::ParanthesisClose:
-		if (opStack.size() <= 0) {
+		// check for errorstate
+		if (opStack.size() <= 0 || opStack.top() == Op::Expression) {
 			throw ParseError("mismatched paranthesis");
 		}
-		if (opStack.top() == Token::ParanthesisOpen) {
+		// check if term is on top
+		if (opStack.top() == Op::Term)
+		{
+			// yep, term was the last token in expression, this is pretty normal
+			opStack.pop();
+		}
+		// check for opening paranthesis
+		if (opStack.top() == Op::Paranthesis) {
 			lexer.MoveNext(); // consume token
 			opStack.pop();
+			opStack.push(Op::Term);
 			return true; // continue parsing
 		}
 		else {
-			instruction = TokenToInfixOperator(opStack.top());
+			instruction = OpToInstructionType(opStack.top());
 			opStack.pop();
 			return false; // yield operator
 		}
@@ -271,6 +308,12 @@ bool Carbon::Compiler::Parser::ParseExpression()
 	// operators
 	case Token::Plus:
 	case Token::Minus:
+		if (opStack.top() != Op::Term)
+		{
+			opStack.push(TokenToUnaryOp(token));
+			lexer.MoveNext(); // consume token
+			return true; //continue parsing
+		}
 	case Token::Multiply:
 	case Token::Divide:
 	case Token::Equals:
@@ -280,30 +323,43 @@ bool Carbon::Compiler::Parser::ParseExpression()
 	case Token::Less:
 	case Token::LessOrEqual:
 	case Token::Assign: {
+		// expecting binary op
+		if (opStack.top() != Op::Term) // it must have a valid left hand side
+		{
+			throw ParseError("unexpected operator");
+		}
+		// parse binary op
 		bool push = true;
+		Op currentOp = TokenToBinaryOp(token);
+		// temporarely remove term, this is needed for precedence comparison as previous op is below the required term
+		opStack.pop();
 		if (opStack.size() > 0)
 		{
-			auto precedenceToken = TokenPrecedence(token);
-			auto precedenceOpstackTop = TokenPrecedence(opStack.top());
+			auto precedenceToken = OpPrecedence(currentOp);
+			auto precedenceOpstackTop = OpPrecedence(opStack.top());
 			if (precedenceToken < precedenceOpstackTop)
 			{
 				push = false;
 			}
-			else if (precedenceToken == precedenceOpstackTop && !TokenIsRightAssociative(token))
+			else if (precedenceToken == precedenceOpstackTop && !OpIsRightAssociative(currentOp))
 			{
 				push = false;
 			}
 		}
 		if (push)
 		{
-			opStack.push(token);
 			lexer.MoveNext(); // consume token
+			// term is consumed don't add it back
+			opStack.push(currentOp);
 			return true; //continue parsing
 		}
 		else
 		{
-			instruction = TokenToInfixOperator(opStack.top());
+			instruction = OpToInstructionType(opStack.top());
+			// consume operator on opstack
 			opStack.pop();
+			// addback term which was removed in the beginning
+			opStack.push(Op::Term);
 			return false;
 		}
 	}
@@ -312,19 +368,52 @@ bool Carbon::Compiler::Parser::ParseExpression()
 	case Token::EndStatement:
 		if (opStack.size()>0)
 		{
-			instruction = TokenToInfixOperator(opStack.top());
-			opStack.pop();
-			return false; // yield
+			// check if term is on top
+			if (opStack.top()==Op::Term)
+			{
+				// yep, term was the last token in expression, this is pretty normal
+				opStack.pop();
+			}
+			// now lets check if we reached the end of expression
+			if (opStack.top()==Op::Expression)
+			{
+				state.pop();
+				opStack.pop();
+				return true; // end of epxression, continue parsing
+			}
+			else
+			{
+				// no, we have some more instructions left
+				instruction = OpToInstructionType(opStack.top());
+				opStack.pop();
+				return false; // yield
+			}
 		}
 		else
 		{
-			state.pop();
-			return true; // yield
+			throw ParseError("invalid parser state");
 		}
 		break;
 	default:
 		throw ParseError();
 		break;
+	}
+}
+
+bool Carbon::Compiler::Parser::ParseExpressionPopUnary()
+{
+	auto op = opStack.top();
+	if (OpIsUnary(op))
+	{
+		instruction = OpToInstructionType(op);
+		opStack.pop();
+		return false; // yield
+	}
+	else
+	{
+		state.pop();
+		opStack.push(Op::Term);
+		return true; // continue parsing
 	}
 }
 
@@ -352,6 +441,62 @@ InstructionType Carbon::Compiler::Parser::TokenToAtom(Token token)
 		return InstructionType::ONUM;
 	default: 
 		throw ParseError(); break;
+	}
+}
+
+Carbon::Compiler::Parser::Op Carbon::Compiler::Parser::TokenToBinaryOp(Token token)
+{
+	switch (token)
+	{
+		case Token::Assign: 
+			return Op::Assign;
+		case Token::Plus:
+			return Op::Add;
+		case Token::Minus:
+			return Op::Subtract;
+		case Token::Multiply:
+			return Op::Multiply;
+		case Token::Divide:
+			return Op::Divide;
+		case Token::Equals: 
+			return Op::Equals;
+		case Token::NotEquals: 
+			return Op::NotEquals;
+		case Token::Greater:
+			return Op::Greater;
+		case Token::GreaterOrEqual:
+			return Op::GreaterOrEqual;
+		case Token::Less:
+			return Op::Less;
+		case Token::LessOrEqual:
+			return Op::LessOrEqual;
+		default:
+			throw ParseError("invalid operator");
+	}
+}
+
+Carbon::Compiler::Parser::Op Carbon::Compiler::Parser::TokenToUnaryOp(Token token)
+{
+	switch (token)
+	{
+	case Token::Plus:
+		return Op::UnaryPlus;
+	case Token::Minus:
+		return Op::UnaryMinus;
+	default:
+		throw ParseError("invalid operator");
+	}
+}
+
+bool Carbon::Compiler::Parser::OpIsUnary(Op op)
+{
+	switch (op)
+	{
+		case Op::UnaryMinus:
+		case Op::UnaryPlus:
+			return true;
+		default:
+			return false;
 	}
 }
 
