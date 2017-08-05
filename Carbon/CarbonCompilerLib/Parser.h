@@ -25,10 +25,12 @@ namespace Carbon
 				BlockOrObject2ndToken,
 				BlockTemp, 
 				Block,
-				Object,
 				ObjectTemp,
 				Expression,
 				ExpressionPopUnary,
+				KeyValue,
+				KeyValueColon,
+				KeyValueComma,
 			};
 
 			// used for parsing expressions
@@ -38,6 +40,8 @@ namespace Carbon
 				Term,
 				Expression,
 				Paranthesis,
+				Braces,
+				Bracket,
 				// unary ops
 				UnaryPlus,
 				UnaryMinus,
@@ -62,10 +66,12 @@ namespace Carbon
 			bool ParseBlockOrObject2ndToken();
 			bool ParseBlockTemp();
 			bool ParseBlock();
-			bool ParseObject();
 			bool ParseObjectTemp();
 			bool ParseExpression();
 			bool ParseExpressionPopUnary();
+			bool ParseKeyValue();
+			bool ParseKeyValueColon();
+			bool ParseKeyValueComma();
 
 			InstructionType OpToInstructionType(Op top) const;
 			InstructionType TokenToAtom(Token token);

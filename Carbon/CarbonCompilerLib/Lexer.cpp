@@ -509,7 +509,7 @@ void Carbon::Compiler::Lexer::MoveNext()
 		case '&': case '|': case '^': case '~':
 		case '(': case ')': case '{': case '}':
 		case '[': case ']': case '.': case ',':
-		case ';':
+		case ';': case ':':
 			StartToken();
 			ParseOperator();
 			parsing = false;

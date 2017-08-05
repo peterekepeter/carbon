@@ -133,6 +133,38 @@ namespace UnitTestCarbonCompilerLib
 		}
 
 
+		TEST_METHOD(ParserExpressionObjectSimple)
+		{
+			ss input("obj={}"); Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "obj");
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTBEGIN);
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTEND);
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserExpressionObject)
+		{
+			ss input("v={x:3,y:4}"); Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "v");
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTBEGIN);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "y");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTEND);
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserExpressionArray)
+		{
+			ss input("v=[3,4]"); Lexer lexer(input); Parser parser(lexer);
+		}
+
+
 
 
 	};

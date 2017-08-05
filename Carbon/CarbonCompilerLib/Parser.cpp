@@ -36,6 +36,15 @@ bool Carbon::Compiler::Parser::MoveNext()
 	case State::ExpressionPopUnary:
 		parsing = ParseExpressionPopUnary();
 		break;
+	case State::KeyValue:
+		parsing = ParseKeyValue();
+		break;
+	case State::KeyValueColon:
+		parsing = ParseKeyValueColon();
+		break;
+	case State::KeyValueComma:
+		parsing = ParseKeyValueComma();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -209,9 +218,61 @@ bool Carbon::Compiler::Parser::ParseBlock()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseObject()
+bool Carbon::Compiler::Parser::ParseKeyValue()
 {
-	return false;
+	switch (auto token = lexer.GetToken())
+	{
+	case Token::Id:
+	case Token::String:
+		state.pop();
+		state.push(State::KeyValueColon);
+		instruction = TokenToAtom(token);
+		instructionData = lexer.GetData();
+		lexer.MoveNext(); // consume token
+		return false; // yield
+	case Token::BracesClose:
+		state.pop();
+		return true; // continue parsing
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Compiler::Parser::ParseKeyValueColon()
+{
+	// expecting ':'
+	switch (lexer.GetToken())
+	{
+	case Token::Colon:
+		// OK
+		lexer.MoveNext(); // consume colon
+		state.pop();
+		state.push(State::KeyValueComma);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		return true; // continue parsing expression
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Compiler::Parser::ParseKeyValueComma()
+{
+	// expecting ',' or '}'
+	switch (lexer.GetToken())
+	{
+	case Token::Comma:
+		// comma found, keyvalue continues
+		lexer.MoveNext(); // consume comma
+		state.pop();
+		state.push(State::KeyValue);
+		return true; //continue parsing
+	case Token::BracesClose: // end
+		state.pop();
+		return true; //continue parsing
+	default:
+		throw ParseError();
+	}
 }
 
 bool Carbon::Compiler::Parser::ParseObjectTemp()
@@ -303,17 +364,33 @@ bool Carbon::Compiler::Parser::ParseExpression()
 			opStack.pop();
 			return false; // yield operator
 		}
-
 		return true;
+
+	case Token::BracesOpen:
+		// check if we had term last
+		if (opStack.top() == Op::Term)
+		{
+			// "a{x:3}" is not valid syntax
+			throw ParseError("Unexpected object, expecting operator or function call");
+		}
+		opStack.push(Op::Braces);
+		state.push(State::KeyValue);
+		lexer.MoveNext(); // consume token
+		instruction = InstructionType::OBJECTBEGIN;
+		return false; // yield instruction
+
+
 	// operators
 	case Token::Plus:
 	case Token::Minus:
 		if (opStack.top() != Op::Term)
 		{
+			// yep we have a unary operator!
 			opStack.push(TokenToUnaryOp(token));
 			lexer.MoveNext(); // consume token
 			return true; //continue parsing
 		}
+		// nope, not a unary op, continue to binary ops
 	case Token::Multiply:
 	case Token::Divide:
 	case Token::Equals:
@@ -364,8 +441,21 @@ bool Carbon::Compiler::Parser::ParseExpression()
 		}
 	}
 		break;
+
+	case Token::BracesClose:
+		// we should have the opening braces on the opstack
+		if (opStack.top() == Op::Braces)
+		{
+			opStack.pop(); // remove braces
+			opStack.push(Op::Term);
+			lexer.MoveNext(); // consume token
+			instruction = InstructionType::OBJECTEND;
+			return false; // yield instruction
+		}
+		// purpusefully fall through, closing braces are ending current expression
 	case Token::FileEnd:
 	case Token::EndStatement:
+	case Token::Comma:
 		if (opStack.size()>0)
 		{
 			// check if term is on top
