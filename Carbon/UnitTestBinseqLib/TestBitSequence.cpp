@@ -8,7 +8,7 @@ using namespace binseq;
 
 namespace UnitTestBinseqLib
 {
-	TEST_CLASS(UnitTest1)
+	TEST_CLASS(BinseqUnitTest)
 	{
 	public:
 
