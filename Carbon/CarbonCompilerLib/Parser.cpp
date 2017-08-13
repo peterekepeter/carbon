@@ -45,6 +45,12 @@ bool Carbon::Compiler::Parser::MoveNext()
 	case State::KeyValueComma:
 		parsing = ParseKeyValueComma();
 		break;
+	case State::CallList:
+		parsing = ParseCallList();
+		break;
+	case State::CallListComma:
+		parsing = ParseCallListComma();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -275,6 +281,104 @@ bool Carbon::Compiler::Parser::ParseKeyValueComma()
 	}
 }
 
+bool Carbon::Compiler::Parser::ParseCallList()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		// paranthesis should be on top of stack
+		if (opStack.top() == Op::Paranthesis)
+		{
+			// ok, closing call list 
+			state.pop();
+			return true; // continue parsing
+		}
+		else
+		{
+			throw ParseError("Unexpected parser state.");
+		}
+		break;
+
+	case Token::BracketClose:
+		// bracket should be on top of stack
+		if (opStack.top() == Op::Bracket)
+		{
+			// ok, closing array call list
+			state.pop();
+			return true; // continue parsing
+		} else
+		{
+			throw ParseError("Unexpected parser state.");
+		}
+		break;
+	
+	case Token::Id:
+	case Token::String:
+	case Token::StringBinary:
+	case Token::StringUnicode:
+	case Token::Float:
+	case Token::Number:
+	case Token::NumberBinary:
+	case Token::NumberHexadecimal:
+	case Token::NumberOctal:
+	case Token::Minus:
+	case Token::Plus:
+		// it's an expression
+		state.pop();
+		state.push(State::CallListComma);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		return true;
+
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Compiler::Parser::ParseCallListComma()
+{
+	// expecting a comma, then continue with call list
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		// paranthesis should be on top of stack
+		if (opStack.top() == Op::Paranthesis)
+		{
+			// ok, closing call list
+			state.pop();
+			return true; // continue parsing
+		}
+		else
+		{
+			throw ParseError("Unexpected parser state.");
+		}
+		break;
+
+	case Token::BracketClose:
+		// bracket should be on top of stack
+		if (opStack.top() == Op::Bracket)
+		{
+			// ok, closing array call list
+			state.pop();
+			return true; // continue parsing
+		}
+		else
+		{
+			throw ParseError("Unexpected parser state.");
+		}
+		break;
+
+	case Token::Comma:
+		state.pop();
+		state.push(State::CallList);
+		lexer.MoveNext(); // consume token
+		return true; // continue parsing
+
+	default:
+		throw ParseError();
+	}
+}
+
 bool Carbon::Compiler::Parser::ParseObjectTemp()
 {
 	return false;
@@ -366,6 +470,19 @@ bool Carbon::Compiler::Parser::ParseExpression()
 		}
 		return true;
 
+	case Token::BracketOpen:
+		// check if we had term last
+		if (opStack.top() == Op::Term)
+		{
+			// a[3] array sbuscriut
+			throw ParseError("Array subscript is not supported yet");
+		}
+		opStack.push(Op::Bracket);
+		state.push(State::CallList);
+		lexer.MoveNext(); // consume token
+		instruction = InstructionType::ARRAYBEGIN;
+		return false; // yield instruction
+
 	case Token::BracesOpen:
 		// check if we had term last
 		if (opStack.top() == Op::Term)
@@ -378,7 +495,6 @@ bool Carbon::Compiler::Parser::ParseExpression()
 		lexer.MoveNext(); // consume token
 		instruction = InstructionType::OBJECTBEGIN;
 		return false; // yield instruction
-
 
 	// operators
 	case Token::Plus:
@@ -442,6 +558,18 @@ bool Carbon::Compiler::Parser::ParseExpression()
 	}
 		break;
 
+
+	case Token::BracketClose:
+		// should have baracket on top
+		if (opStack.top() == Op::Bracket)
+		{
+			opStack.pop();
+			opStack.push(Op::Term);
+			lexer.MoveNext(); // consume token
+			instruction = InstructionType::ARRAYEND;
+			return false; // yield instruction
+		}
+		// purposefully fall through, closing bracket needs to by handled by parent expression
 	case Token::BracesClose:
 		// we should have the opening braces on the opstack
 		if (opStack.top() == Op::Braces)

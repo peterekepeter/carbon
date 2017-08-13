@@ -159,9 +159,28 @@ namespace UnitTestCarbonCompilerLib
 			Assert::IsFalse(parser.MoveNext());
 		}
 
+		TEST_METHOD(ParserExpressionArraySimple)
+		{
+			ss input("v=[]"); Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "v");
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYBEGIN);
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYEND);
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
 		TEST_METHOD(ParserExpressionArray)
 		{
 			ss input("v=[3,4]"); Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "v");
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYBEGIN);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYEND);
+			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
 		}
 
 
