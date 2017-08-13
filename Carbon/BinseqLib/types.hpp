@@ -2,14 +2,14 @@
 
 namespace binseq {
 
-	typedef bool bit;
-	typedef unsigned char u8;
-	typedef unsigned short u16;
-	typedef unsigned int u32;
-	typedef unsigned long long u64;
-	typedef signed char s8;
-	typedef signed short s16;
-	typedef signed int s32;
-	typedef signed long long s64;
+	using bit = bool;
+	using u8  = unsigned char;
+	using u16 = unsigned short;
+	using u32 = unsigned int;
+	using u64 = unsigned long long;
+	using s8  = signed char;
+	using s16 = signed short;
+	using s32 = signed int;
+	using s64 = signed long long;
 
 }

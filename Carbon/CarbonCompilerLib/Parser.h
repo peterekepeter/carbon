@@ -1,7 +1,7 @@
 #pragma once
 #include "Lexer.h"
-#include "../CarbonCommonLib/InstructionReader.h"
 #include <stack>
+#include "../CarbonCommonLib/Instruction.h"
 
 namespace Carbon
 {

@@ -104,18 +104,12 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Compiler.cpp" />
     <ClCompile Include="exec.cpp" />
-    <ClCompile Include="generated\lexer.cpp" />
-    <ClCompile Include="generated\parser.cpp" />
     <ClCompile Include="oscompatibility.cpp" />
     <ClCompile Include="yyerror.cpp" />
-    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="exec.hpp" />
-    <ClInclude Include="Compiler.hpp" />
-    <ClInclude Include="generated\parser.hpp" />
     <ClInclude Include="unistd.h" />
     <ClInclude Include="yyerror.hpp" />
     <ClInclude Include="lexer.hpp" />

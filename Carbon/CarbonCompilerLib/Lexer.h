@@ -10,7 +10,7 @@ namespace Carbon
 	{
 	public:
 		// start parsing
-		Lexer(std::istringstream& inputStream); 
+		Lexer(std::istream& inputStream);
 
 		// move to next token
 		void MoveNext();
@@ -47,7 +47,7 @@ namespace Carbon
 		int lineCounter, positionCounter, tokenStartPosition, tokenStartLine;
 		Token token;
 		std::string buffer;
-		std::istringstream& input;
+		std::istream& input;
 	};
 
 	

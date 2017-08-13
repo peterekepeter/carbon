@@ -2,7 +2,7 @@
 #include "Token.h"
 #include "Lexer.h"
 
-Carbon::Lexer::Lexer(std::istringstream & stream) 
+Carbon::Lexer::Lexer(std::istream & stream)
 	: input(stream)
 	, lineCounter(1)
 	, positionCounter(1)

@@ -2,7 +2,7 @@
 
 #include "../CarbonCommonLib/InstructionWriter.h"
 
-namespace exec {
+namespace Carbon {
 
 	class ExecutorImp;
 

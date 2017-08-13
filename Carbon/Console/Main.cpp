@@ -1,6 +1,8 @@
-#include "../CarbonCoreLib/Compiler.hpp"
-#include "../CarbonCoreLib/exec.hpp"
+
 #include <string>
+#include "../CarbonCommonLib/InstructionWriter.h"
+#include "../CarbonCoreLib/exec.hpp"
+#include "../CarbonCompilerLib/Compiler.h"
 
 
 std::string prepareString(const char* str) {
@@ -14,6 +16,8 @@ std::string prepareString(const char* str) {
 	builder += '"';
 	return builder;
 }
+
+using namespace Carbon;
 
 void submitArguments(InstructionWriter &output, int argc, char** argv) {
 	output.WriteInstruction(InstructionType::ID, "arguments");
@@ -70,13 +74,13 @@ void submitEnv(InstructionWriter &output, char** env) {
 
 int main(int argc, char** argv, char** env) {
 
-	exec::Executor executor;
+	Executor executor;
 	submitArguments(executor, argc, argv);
 	submitEnv(executor, env);
 
 	if (argc > 1) {
 		for (int i = 1; i < argc; i++) {
-			Compiler::CompileFile(argv[i], executor);
+			CompileFile(argv[i], executor);
 			executor.Execute();
 		}
 	}
@@ -84,6 +88,6 @@ int main(int argc, char** argv, char** env) {
 		while (true) {
 			executor.SetInteractiveMode(true);
 			executor.ClearStatement();
-			Compiler::CompileStdin(executor);
+			CompileStdin(executor);
 		}
 }
