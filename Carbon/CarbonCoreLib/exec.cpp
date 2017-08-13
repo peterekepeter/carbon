@@ -235,7 +235,7 @@ namespace Carbon {
 		void RegisterNativeFunction(const char* name, native_function_ptr, bool pure);
 		ExecutorImp::ExecutorImp();
 		std::shared_ptr<Node> ExecuteStatement(std::shared_ptr<Node>);
-		void ExecuteStatementList();
+		std::shared_ptr<Node> ExecuteStatementList();
 		void ClearStatementList();
 
 		inline std::shared_ptr<Node> ExecuteInfixArithmetic(NodeCommand& node);
@@ -651,7 +651,8 @@ namespace Carbon {
 					while (!imp->stack.empty()) imp->stack.pop();
 					if (imp->ShowPrompt) {
 						//if console mode, execute
-						imp->ExecuteStatementList();
+						auto node = imp->ExecuteStatementList();
+						recursive_print(*node);
 						imp->ClearStatementList();
 						printf(">");
 					}
@@ -977,15 +978,17 @@ namespace Carbon {
 		this->StatementList.clear();
 	}
 
-	void ExecutorImp::ExecuteStatementList() {
-		for (auto i = StatementList.begin(); i != StatementList.end(); i++) {
-			auto node = ExecuteStatement(*i);
+	std::shared_ptr<Node> ExecutorImp::ExecuteStatementList() {
+		std::shared_ptr<Node> node;
+		for (auto i = StatementList.begin(); i != StatementList.end(); ++i) {
+			node = ExecuteStatement(*i);
 			if (node->GetNodeType() == NODETYPE::NODE_ERROR) {
 				if (!ShowPrompt) {
 					fprintf(stderr, "Execution halted to prevent unknown sidefects.\n");
 				} else { }
 			}
 		}
+		return node;
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecutePrefixArithmetic(NodeCommand& node) {

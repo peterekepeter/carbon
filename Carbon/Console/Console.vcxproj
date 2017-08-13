@@ -152,6 +152,12 @@
     <ProjectReference Include="..\BinseqLib\BinseqLib.vcxproj">
       <Project>{6b23c0d2-0a1b-4f79-9454-daf854102f26}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\CarbonCommonLib\CarbonCommonLib.vcxproj">
+      <Project>{f8be3744-ae79-4846-9c99-c82547c2d9b3}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\CarbonCompilerLib\CarbonCompilerLib.vcxproj">
+      <Project>{94257869-53ad-4393-b644-fb26fd47684c}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\CarbonCoreLib\CarbonCoreLib.vcxproj">
       <Project>{eff64adf-7506-4bcc-b7de-ac55ec67a06d}</Project>
     </ProjectReference>
