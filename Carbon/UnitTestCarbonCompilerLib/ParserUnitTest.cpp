@@ -10,8 +10,9 @@ namespace UnitTestCarbonCompilerLib
 	TEST_CLASS(ParserUnitTest)
 	{
 	public:
-		using Parser = Carbon::Compiler::Parser;
-		using Lexer = Carbon::Compiler::Lexer;
+		using InstructionType = Carbon::InstructionType;
+		using Parser = Carbon::Parser;
+		using Lexer = Carbon::Lexer;
 		using ss = std::istringstream;
 
 		TEST_METHOD(ParserEmptyProgram)

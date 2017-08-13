@@ -1,6 +1,6 @@
 #pragma once
 
-#include "InstructionWriter.hpp"
+#include "../CarbonCommonLib/InstructionWriter.h"
 
 namespace exec {
 

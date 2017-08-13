@@ -9,8 +9,8 @@ namespace UnitTestCarbonCompilerLib
 	TEST_CLASS(LexerUnitTest)
 	{
 	public:
-		using Lexer = Carbon::Compiler::Lexer;
-		using Token = Carbon::Compiler::Token;
+		using Lexer = Carbon::Lexer;
+		using Token = Carbon::Token;
 		
 		TEST_METHOD(LexerWhitespace)
 		{

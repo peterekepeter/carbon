@@ -76,15 +76,6 @@
     <ClInclude Include="yyerror.hpp">
       <Filter>Header Files\Compiler</Filter>
     </ClInclude>
-    <ClInclude Include="InstructionReader.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="InstructionWriter.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="InstructionType.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="generated\parser.hpp">
       <Filter>Source Files\Compiler\Generated</Filter>
     </ClInclude>

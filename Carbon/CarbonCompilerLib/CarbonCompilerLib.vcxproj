@@ -19,11 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Compiler.h" />
     <ClInclude Include="Parser.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Lexer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Compiler.cpp" />
     <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="Parser.cpp" />
   </ItemGroup>

@@ -1,11 +1,11 @@
 #include "Parser.h"
 
-Carbon::Compiler::Parser::Parser(Lexer & lexer) : lexer(lexer)
+Carbon::Parser::Parser(Lexer & lexer) : lexer(lexer)
 {
 	state.push(State::Program);
 }
 
-bool Carbon::Compiler::Parser::MoveNext()
+bool Carbon::Parser::MoveNext()
 {
 	if (state.size() == 0) {
 		// invalid parser state, probably finished file already
@@ -59,17 +59,17 @@ bool Carbon::Compiler::Parser::MoveNext()
 	return state.size() > 0;
 }
 
-InstructionType Carbon::Compiler::Parser::ReadInstructionType()
+Carbon::InstructionType Carbon::Parser::ReadInstructionType()
 {
 	return this->instruction;
 }
 
-const char * Carbon::Compiler::Parser::ReadStringData()
+const char * Carbon::Parser::ReadStringData()
 {
 	return this->instructionData.c_str();
 }
 
-bool Carbon::Compiler::Parser::ParseProgram()
+bool Carbon::Parser::ParseProgram()
 {
 	switch (lexer.GetToken()) {
 	case Token::FileBegin:
@@ -91,7 +91,7 @@ bool Carbon::Compiler::Parser::ParseProgram()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseStatement()
+bool Carbon::Parser::ParseStatement()
 {
 	switch (lexer.GetToken()) {
 	case Token::EndStatement:
@@ -133,7 +133,7 @@ bool Carbon::Compiler::Parser::ParseStatement()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseBlockOrObject()
+bool Carbon::Parser::ParseBlockOrObject()
 {
 	switch (lexer.GetToken())
 	{
@@ -160,7 +160,7 @@ bool Carbon::Compiler::Parser::ParseBlockOrObject()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseBlockOrObject2ndToken()
+bool Carbon::Parser::ParseBlockOrObject2ndToken()
 {
 	switch (lexer.GetToken())
 	{
@@ -179,7 +179,7 @@ bool Carbon::Compiler::Parser::ParseBlockOrObject2ndToken()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseBlockTemp()
+bool Carbon::Parser::ParseBlockTemp()
 {
 	state.pop(); // clear blocktemp
 	state.push(State::Block); // push block
@@ -199,7 +199,7 @@ bool Carbon::Compiler::Parser::ParseBlockTemp()
 	return false; //yield ATOM
 }
 
-bool Carbon::Compiler::Parser::ParseBlock()
+bool Carbon::Parser::ParseBlock()
 {
 	switch (lexer.GetToken()) {
 	case Token::FileBegin:
@@ -224,7 +224,7 @@ bool Carbon::Compiler::Parser::ParseBlock()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseKeyValue()
+bool Carbon::Parser::ParseKeyValue()
 {
 	switch (auto token = lexer.GetToken())
 	{
@@ -244,7 +244,7 @@ bool Carbon::Compiler::Parser::ParseKeyValue()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseKeyValueColon()
+bool Carbon::Parser::ParseKeyValueColon()
 {
 	// expecting ':'
 	switch (lexer.GetToken())
@@ -262,7 +262,7 @@ bool Carbon::Compiler::Parser::ParseKeyValueColon()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseKeyValueComma()
+bool Carbon::Parser::ParseKeyValueComma()
 {
 	// expecting ',' or '}'
 	switch (lexer.GetToken())
@@ -281,7 +281,7 @@ bool Carbon::Compiler::Parser::ParseKeyValueComma()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseCallList()
+bool Carbon::Parser::ParseCallList()
 {
 	switch (lexer.GetToken())
 	{
@@ -335,7 +335,7 @@ bool Carbon::Compiler::Parser::ParseCallList()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseCallListComma()
+bool Carbon::Parser::ParseCallListComma()
 {
 	// expecting a comma, then continue with call list
 	switch (lexer.GetToken())
@@ -379,12 +379,12 @@ bool Carbon::Compiler::Parser::ParseCallListComma()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseObjectTemp()
+bool Carbon::Parser::ParseObjectTemp()
 {
 	return false;
 }
 
-InstructionType Carbon::Compiler::Parser::OpToInstructionType(Op top) const
+Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
 {
 	switch (top)
 	{
@@ -406,7 +406,7 @@ InstructionType Carbon::Compiler::Parser::OpToInstructionType(Op top) const
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseExpression()
+bool Carbon::Parser::ParseExpression()
 {
 	switch (auto token = lexer.GetToken())
 	{
@@ -618,7 +618,7 @@ bool Carbon::Compiler::Parser::ParseExpression()
 	}
 }
 
-bool Carbon::Compiler::Parser::ParseExpressionPopUnary()
+bool Carbon::Parser::ParseExpressionPopUnary()
 {
 	auto op = opStack.top();
 	if (OpIsUnary(op))
@@ -635,7 +635,7 @@ bool Carbon::Compiler::Parser::ParseExpressionPopUnary()
 	}
 }
 
-InstructionType Carbon::Compiler::Parser::TokenToAtom(Token token)
+Carbon::InstructionType Carbon::Parser::TokenToAtom(Token token)
 {
 	switch (token)
 	{
@@ -662,7 +662,7 @@ InstructionType Carbon::Compiler::Parser::TokenToAtom(Token token)
 	}
 }
 
-Carbon::Compiler::Parser::Op Carbon::Compiler::Parser::TokenToBinaryOp(Token token)
+Carbon::Parser::Op Carbon::Parser::TokenToBinaryOp(Token token)
 {
 	switch (token)
 	{
@@ -693,7 +693,7 @@ Carbon::Compiler::Parser::Op Carbon::Compiler::Parser::TokenToBinaryOp(Token tok
 	}
 }
 
-Carbon::Compiler::Parser::Op Carbon::Compiler::Parser::TokenToUnaryOp(Token token)
+Carbon::Parser::Op Carbon::Parser::TokenToUnaryOp(Token token)
 {
 	switch (token)
 	{
@@ -706,7 +706,7 @@ Carbon::Compiler::Parser::Op Carbon::Compiler::Parser::TokenToUnaryOp(Token toke
 	}
 }
 
-bool Carbon::Compiler::Parser::OpIsUnary(Op op)
+bool Carbon::Parser::OpIsUnary(Op op)
 {
 	switch (op)
 	{
@@ -718,14 +718,14 @@ bool Carbon::Compiler::Parser::OpIsUnary(Op op)
 	}
 }
 
-std::invalid_argument Carbon::Compiler::Parser::ParseError()
+std::invalid_argument Carbon::Parser::ParseError()
 {
 	std::stringstream ss;
 	ss << "Unexpected" << lexer.GetData() << " at line " << lexer.GetLine() << " position " << lexer.GetPosition() << "\n";
 	return std::invalid_argument(ss.str());
 }
 
-std::invalid_argument Carbon::Compiler::Parser::ParseError(const char* message)
+std::invalid_argument Carbon::Parser::ParseError(const char* message)
 {
 	std::stringstream ss;
 	ss << message << " at line " << lexer.GetLine() << " position " << lexer.GetPosition() << "\n";
