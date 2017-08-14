@@ -42,6 +42,7 @@ namespace Carbon
 			Paranthesis,
 			Braces,
 			Bracket,
+			FunctionCall,
 			// unary ops
 			UnaryPlus,
 			UnaryMinus,

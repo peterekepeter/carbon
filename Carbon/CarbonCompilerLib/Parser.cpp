@@ -287,7 +287,7 @@ bool Carbon::Parser::ParseCallList()
 	{
 	case Token::ParanthesisClose:
 		// paranthesis should be on top of stack
-		if (opStack.top() == Op::Paranthesis)
+		if (opStack.top() == Op::FunctionCall)
 		{
 			// ok, closing call list 
 			state.pop();
@@ -342,7 +342,7 @@ bool Carbon::Parser::ParseCallListComma()
 	{
 	case Token::ParanthesisClose:
 		// paranthesis should be on top of stack
-		if (opStack.top() == Op::Paranthesis)
+		if (opStack.top() == Op::FunctionCall)
 		{
 			// ok, closing call list
 			state.pop();
@@ -439,15 +439,28 @@ bool Carbon::Parser::ParseExpression()
 		}
 		return false; // yield
 	case Token::ParanthesisOpen:
-		// if (expressionPrevAtom) // function call
-		opStack.push(Op::Paranthesis);
-		lexer.MoveNext(); // consume token
-		expressionPrevAtom = false;
-		expressionPrevOp = false;
-		return true; // continue parsing
+		if (opStack.top() == Op::Term)
+		{
+			opStack.pop();
+			opStack.push(Op::FunctionCall);
+			state.push(State::CallList);
+			lexer.MoveNext(); // consume token
+			instruction = InstructionType::CALLBEGIN;
+			return false; // yield callbegin
+		}
+		else
+		{
+			opStack.push(Op::Paranthesis);
+			lexer.MoveNext(); // consume token
+			expressionPrevAtom = false;
+			expressionPrevOp = false;
+			return true; // continue parsing
+		}
+		return true;
+		
 	case Token::ParanthesisClose:
 		// check for errorstate
-		if (opStack.size() <= 0 || opStack.top() == Op::Expression) {
+		if (opStack.size() <= 0) {
 			throw ParseError("mismatched paranthesis");
 		}
 		// check if term is on top
@@ -456,13 +469,30 @@ bool Carbon::Parser::ParseExpression()
 			// yep, term was the last token in expression, this is pretty normal
 			opStack.pop();
 		}
+		// check for for ending function call
+		if (opStack.top() == Op::FunctionCall)
+		{
+			lexer.MoveNext(); // consume token
+			opStack.pop();
+			opStack.push(Op::Term);
+			instruction = InstructionType::CALLEND;
+			return false; // continue parsing
+		}
 		// check for opening paranthesis
-		if (opStack.top() == Op::Paranthesis) {
+		else if (opStack.top() == Op::Paranthesis) {
 			lexer.MoveNext(); // consume token
 			opStack.pop();
 			opStack.push(Op::Term);
 			return true; // continue parsing
 		}
+		// end of subexpression
+		else if (opStack.top() == Op::Expression)
+		{
+			state.pop();
+			opStack.pop();
+			return true;
+		}
+		// yield operators until we get to either Paranthesis or FunctionCall
 		else {
 			instruction = OpToInstructionType(opStack.top());
 			opStack.pop();
