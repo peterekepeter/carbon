@@ -111,6 +111,11 @@ namespace Carbon {
 		NodeBits(binseq::bit_sequence&& b);
 	};
 
+	namespace native
+	{
+		static std::shared_ptr<Node> view(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node); //forwarddecl
+	};
+
 	const char* NodeBits::GetText() {
 		return "binseq";
 	}
@@ -651,10 +656,11 @@ namespace Carbon {
 					while (!imp->stack.empty()) imp->stack.pop();
 					if (imp->ShowPrompt) {
 						//if console mode, execute
-						auto node = imp->ExecuteStatementList();
-						recursive_print(*node);
+						std::vector<std::shared_ptr<Node>> args; 
+						args.push_back(imp->ExecuteStatementList());
+						native::view(this->imp, args);
 						imp->ClearStatementList();
-						printf(">");
+						printf(">> ");
 					}
 				}
 
@@ -891,7 +897,7 @@ namespace Carbon {
 	void Executor::SetInteractiveMode(bool interactive) {
 		this->imp->ShowPrompt = interactive;
 		if (interactive)
-			printf(">");
+			printf(">> ");
 	}
 
 	void Executor::ClearStatement() {
