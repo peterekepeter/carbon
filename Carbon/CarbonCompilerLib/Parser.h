@@ -31,6 +31,11 @@ namespace Carbon
 			KeyValueComma,
 			CallList,
 			CallListComma,
+			IdList,
+			IdListComma,
+			FunctionEnd,
+			FunctionBegin,
+			FunctionEndParameters,
 		};
 
 		// used for parsing expressions
@@ -67,7 +72,6 @@ namespace Carbon
 		bool ParseBlockOrObject2ndToken();
 		bool ParseBlockTemp();
 		bool ParseBlock();
-		bool ParseObjectTemp();
 		bool ParseExpression();
 		bool ParseExpressionPopUnary();
 		bool ParseKeyValue();
@@ -75,6 +79,11 @@ namespace Carbon
 		bool ParseKeyValueComma();
 		bool ParseCallList();
 		bool ParseCallListComma();
+		bool ParseIdList();
+		bool ParseIdListComma();
+		bool ParseFunctionEnd();
+		bool ParseFunctionBegin();
+		bool ParseFunctionEndParameters();
 
 		InstructionType OpToInstructionType(Op top) const;
 		InstructionType TokenToAtom(Token token);

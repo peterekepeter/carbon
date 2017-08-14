@@ -51,6 +51,21 @@ bool Carbon::Parser::MoveNext()
 	case State::CallListComma:
 		parsing = ParseCallListComma();
 		break;
+	case State::IdList:
+		parsing = ParseIdList();
+		break;
+	case State::IdListComma:
+		parsing = ParseIdListComma();
+		break;
+	case State::FunctionBegin:
+		parsing = ParseFunctionBegin();
+		break;
+	case State::FunctionEndParameters:
+		parsing = ParseFunctionEndParameters();
+		break;
+	case State::FunctionEnd:
+		parsing = ParseFunctionEnd();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -293,11 +308,7 @@ bool Carbon::Parser::ParseCallList()
 			state.pop();
 			return true; // continue parsing
 		}
-		else
-		{
-			throw ParseError("Unexpected parser state.");
-		}
-		break;
+		throw ParseError("Unexpected parser state.");
 
 	case Token::BracketClose:
 		// bracket should be on top of stack
@@ -306,11 +317,8 @@ bool Carbon::Parser::ParseCallList()
 			// ok, closing array call list
 			state.pop();
 			return true; // continue parsing
-		} else
-		{
-			throw ParseError("Unexpected parser state.");
 		}
-		break;
+		throw ParseError("Unexpected parser state.");
 	
 	case Token::Id:
 	case Token::String:
@@ -348,11 +356,7 @@ bool Carbon::Parser::ParseCallListComma()
 			state.pop();
 			return true; // continue parsing
 		}
-		else
-		{
-			throw ParseError("Unexpected parser state.");
-		}
-		break;
+		throw ParseError("Unexpected parser state.");
 
 	case Token::BracketClose:
 		// bracket should be on top of stack
@@ -362,11 +366,7 @@ bool Carbon::Parser::ParseCallListComma()
 			state.pop();
 			return true; // continue parsing
 		}
-		else
-		{
-			throw ParseError("Unexpected parser state.");
-		}
-		break;
+		throw ParseError("Unexpected parser state.");
 
 	case Token::Comma:
 		state.pop();
@@ -379,9 +379,101 @@ bool Carbon::Parser::ParseCallListComma()
 	}
 }
 
-bool Carbon::Parser::ParseObjectTemp()
+bool Carbon::Parser::ParseIdList()
 {
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		// paranthesis should be on top of stack
+		if (opStack.top() == Op::Paranthesis)
+		{
+			// ok, closing id list 
+			state.pop();
+			return true; // continue parsing
+		}
+		throw ParseError("Unexpected parser state.");
+
+	case Token::Id:
+		instruction = InstructionType::ID;
+		instructionData = lexer.GetData();
+		lexer.MoveNext(); // consume id
+		state.pop();
+		state.push(State::IdListComma);
+		return false; // yield id
+
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Parser::ParseIdListComma()
+{
+	// expecting a comma, then continue with id list
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		// paranthesis should be on top of stack
+		if (opStack.top() == Op::Paranthesis)
+		{
+			// ok, closing id list
+			state.pop();
+			return true; // continue parsing
+		}
+		throw ParseError("Unexpected parser state.");
+
+	case Token::Comma:
+		state.pop();
+		state.push(State::IdList);
+		lexer.MoveNext(); // consume comma
+		return true; // continue parsing
+
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Parser::ParseFunctionEnd()
+{
+	state.pop();
+	instruction = InstructionType::FUNCTIONEND;
 	return false;
+}
+
+bool Carbon::Parser::ParseFunctionBegin()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisOpen:
+		lexer.MoveNext(); // consume parathesis
+		state.pop();
+		state.push(State::FunctionEndParameters);
+		opStack.push(Op::Paranthesis); // for idlist
+		state.push(State::IdList);
+		return true; // continue with id list
+	default:
+		throw ParseError("Expecting function parameter list opening paranthesis");
+	}
+}
+
+bool Carbon::Parser::ParseFunctionEndParameters()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		// check
+		if (opStack.top() != Op::Paranthesis)
+		{
+			throw ParseError();
+		}
+		lexer.MoveNext(); // consume parathesis
+		state.pop();
+		opStack.pop();
+		state.push(State::FunctionEnd);
+		state.push(State::Statement);
+		return true; // continue with id list
+	default:
+		throw ParseError("Expecting function parameter list closing paranthesis");
+	}
 }
 
 Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
@@ -410,6 +502,13 @@ bool Carbon::Parser::ParseExpression()
 {
 	switch (auto token = lexer.GetToken())
 	{
+		// function expression
+	case Token::Function:
+		instruction = InstructionType::FUNCTIONBEGIN;
+		lexer.MoveNext(); // consume function token
+		state.push(State::FunctionBegin);
+		return false; // yield FUNCTIONBEGIN
+		break;
 		// atom in expression
 	case Token::Id:
 	case Token::String:

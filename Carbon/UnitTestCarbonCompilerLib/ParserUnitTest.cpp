@@ -219,7 +219,55 @@ namespace UnitTestCarbonCompilerLib
 			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLEND);
 			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
 			Assert::IsFalse(parser.MoveNext());
+		}
 
+		TEST_METHOD(ParserFunctionParameterless)
+		{
+			ss input("hello = function () 42;;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "hello");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONBEGIN);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM); Assert::AreEqual(parser.ReadStringData(), "42");
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONEND);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserFunction)
+		{
+			ss input("double = function (x) x*x;;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "double");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONBEGIN);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONEND);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserFunctionMultiParam)
+		{
+			ss input("math = function (x,y,z) x*y*z;;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "math");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONBEGIN);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "y");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "z");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "y");
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "z");
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONEND);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
+			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
 		}
 
 
