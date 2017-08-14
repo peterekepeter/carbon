@@ -25,9 +25,6 @@
     <Filter Include="Source Files\Compiler\CustomBuild">
       <UniqueIdentifier>{57da175a-2c3f-4c5a-94a0-93668d0706ea}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Compiler\Generated">
-      <UniqueIdentifier>{59322934-467d-423f-8a7b-8da38b1e1cd2}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="lexer.l">
@@ -38,9 +35,6 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="yyerror.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -50,22 +44,10 @@
     <ClCompile Include="oscompatibility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Compiler.cpp">
-      <Filter>Source Files\Compiler</Filter>
-    </ClCompile>
-    <ClCompile Include="generated\lexer.cpp">
-      <Filter>Source Files\Compiler\Generated</Filter>
-    </ClCompile>
-    <ClCompile Include="generated\parser.cpp">
-      <Filter>Source Files\Compiler\Generated</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="exec.hpp">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Compiler.hpp">
-      <Filter>Header Files\Compiler</Filter>
     </ClInclude>
     <ClInclude Include="unistd.h">
       <Filter>Header Files\Compiler</Filter>
@@ -75,18 +57,6 @@
     </ClInclude>
     <ClInclude Include="yyerror.hpp">
       <Filter>Header Files\Compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="InstructionReader.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="InstructionWriter.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="InstructionType.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="generated\parser.hpp">
-      <Filter>Source Files\Compiler\Generated</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

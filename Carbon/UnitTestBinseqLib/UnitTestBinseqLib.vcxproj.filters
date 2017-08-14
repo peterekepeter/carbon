@@ -26,10 +26,19 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LexerUnitTest.cpp">
+    <ClCompile Include="TestBitCollection.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ParserUnitTest.cpp">
+    <ClCompile Include="TestBitCollectionReference.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TestBitReference.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TestBitSequence.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TestBitSequenceOp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

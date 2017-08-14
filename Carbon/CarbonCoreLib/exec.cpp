@@ -17,7 +17,7 @@
 //#define VERBOSE_SUBMIT
 //#define VERBOSE_TREE
 
-namespace exec {
+namespace Carbon {
 	enum NODETYPE {
 		//`
 		NODE_NONE,
@@ -109,6 +109,11 @@ namespace exec {
 		NodeBits();
 		NodeBits(const binseq::bit_sequence& b);
 		NodeBits(binseq::bit_sequence&& b);
+	};
+
+	namespace native
+	{
+		static std::shared_ptr<Node> view(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node); //forwarddecl
 	};
 
 	const char* NodeBits::GetText() {
@@ -235,7 +240,7 @@ namespace exec {
 		void RegisterNativeFunction(const char* name, native_function_ptr, bool pure);
 		ExecutorImp::ExecutorImp();
 		std::shared_ptr<Node> ExecuteStatement(std::shared_ptr<Node>);
-		void ExecuteStatementList();
+		std::shared_ptr<Node> ExecuteStatementList();
 		void ClearStatementList();
 
 		inline std::shared_ptr<Node> ExecuteInfixArithmetic(NodeCommand& node);
@@ -651,9 +656,11 @@ namespace exec {
 					while (!imp->stack.empty()) imp->stack.pop();
 					if (imp->ShowPrompt) {
 						//if console mode, execute
-						imp->ExecuteStatementList();
+						std::vector<std::shared_ptr<Node>> args; 
+						args.push_back(imp->ExecuteStatementList());
+						native::view(this->imp, args);
 						imp->ClearStatementList();
-						printf(">");
+						printf(">> ");
 					}
 				}
 
@@ -890,7 +897,7 @@ namespace exec {
 	void Executor::SetInteractiveMode(bool interactive) {
 		this->imp->ShowPrompt = interactive;
 		if (interactive)
-			printf(">");
+			printf(">> ");
 	}
 
 	void Executor::ClearStatement() {
@@ -977,15 +984,17 @@ namespace exec {
 		this->StatementList.clear();
 	}
 
-	void ExecutorImp::ExecuteStatementList() {
-		for (auto i = StatementList.begin(); i != StatementList.end(); i++) {
-			auto node = ExecuteStatement(*i);
+	std::shared_ptr<Node> ExecutorImp::ExecuteStatementList() {
+		std::shared_ptr<Node> node;
+		for (auto i = StatementList.begin(); i != StatementList.end(); ++i) {
+			node = ExecuteStatement(*i);
 			if (node->GetNodeType() == NODETYPE::NODE_ERROR) {
 				if (!ShowPrompt) {
 					fprintf(stderr, "Execution halted to prevent unknown sidefects.\n");
 				} else { }
 			}
 		}
+		return node;
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecutePrefixArithmetic(NodeCommand& node) {

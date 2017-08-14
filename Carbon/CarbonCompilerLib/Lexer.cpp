@@ -2,7 +2,7 @@
 #include "Token.h"
 #include "Lexer.h"
 
-Carbon::Compiler::Lexer::Lexer(std::istringstream & stream) 
+Carbon::Lexer::Lexer(std::istream & stream)
 	: input(stream)
 	, lineCounter(1)
 	, positionCounter(1)
@@ -13,38 +13,38 @@ Carbon::Compiler::Lexer::Lexer(std::istringstream & stream)
 	buffer.reserve(256); // initial buffer size
 }
 
-const char* Carbon::Compiler::Lexer::GetData()
+const char* Carbon::Lexer::GetData()
 {
 	return this->buffer.c_str();
 }
 
-Carbon::Compiler::Token Carbon::Compiler::Lexer::GetToken()
+Carbon::Token Carbon::Lexer::GetToken()
 {
 	return this->token;
 }
 
-int Carbon::Compiler::Lexer::GetLine()
+int Carbon::Lexer::GetLine()
 {
 	return this->tokenStartLine;
 }
 
-int Carbon::Compiler::Lexer::GetPosition()
+int Carbon::Lexer::GetPosition()
 {
 	return this->tokenStartPosition;
 }
 
-int Carbon::Compiler::Lexer::GetPositionEnd()
+int Carbon::Lexer::GetPositionEnd()
 {
 	return this->positionCounter;
 }
 
-int Carbon::Compiler::Lexer::GetLineEnd()
+int Carbon::Lexer::GetLineEnd()
 {
 	return this->lineCounter;
 }
 
 // parse in a number, consuming character from input
-void Carbon::Compiler::Lexer::ParseNumber()
+void Carbon::Lexer::ParseNumber()
 {
 	bool floatingPoint = false;
 	bool exponent = false;
@@ -152,7 +152,7 @@ void Carbon::Compiler::Lexer::ParseNumber()
 }
 
 // parse in a string or id, consuming character from input
-void Carbon::Compiler::Lexer::ParseIdOrString()
+void Carbon::Lexer::ParseIdOrString()
 {
 	bool string = false;
 	bool parsing = true;
@@ -199,7 +199,7 @@ void Carbon::Compiler::Lexer::ParseIdOrString()
 }
 
 // parse in a string, consuming character from input
-void Carbon::Compiler::Lexer::ParseString()
+void Carbon::Lexer::ParseString()
 {
 	bool escape = true;
 	bool parsing = true;
@@ -261,7 +261,7 @@ void Carbon::Compiler::Lexer::ParseString()
 
 
 // parse in a whitespace, consuming character from input 
-void Carbon::Compiler::Lexer::ParseWhitespace()
+void Carbon::Lexer::ParseWhitespace()
 {
 	bool parsing = true;
 	while (parsing) {
@@ -286,7 +286,7 @@ void Carbon::Compiler::Lexer::ParseWhitespace()
 	}
 }
 
-void Carbon::Compiler::Lexer::ParseOperator()
+void Carbon::Lexer::ParseOperator()
 {
 	// first char peek
 	auto continueParsing = false;
@@ -345,6 +345,12 @@ void Carbon::Compiler::Lexer::ParseOperator()
 	case '}':
 		token = Token::BracesClose;
 		break;
+	case ':':
+		token = Token::Colon;
+		break;
+	case ',':
+		token = Token::Comma;
+		break;
 	default:
 		acceptFirst = false;
 		break;
@@ -399,7 +405,7 @@ void Carbon::Compiler::Lexer::ParseOperator()
 	throw std::logic_error("This line should never execute.");
 }
 
-Carbon::Compiler::Token Carbon::Compiler::Lexer::DetectKeyword(const std::string& token)
+Carbon::Token Carbon::Lexer::DetectKeyword(const std::string& token)
 {
 	// needs to be verified of keywords are added or changed
 	const int minTokenLength = 2; // min size of token, used to filter out bad cases
@@ -452,7 +458,7 @@ Carbon::Compiler::Token Carbon::Compiler::Lexer::DetectKeyword(const std::string
 }
 
 // start of a token, reset buffer and store position
-void Carbon::Compiler::Lexer::StartToken()
+void Carbon::Lexer::StartToken()
 {
 	tokenStartLine = lineCounter;
 	tokenStartPosition = positionCounter;
@@ -460,7 +466,7 @@ void Carbon::Compiler::Lexer::StartToken()
 }
 
 // read next token
-void Carbon::Compiler::Lexer::MoveNext()
+void Carbon::Lexer::MoveNext()
 {
 	if (this->token == Token::FileEnd) {
 		return;
@@ -503,7 +509,7 @@ void Carbon::Compiler::Lexer::MoveNext()
 		case '&': case '|': case '^': case '~':
 		case '(': case ')': case '{': case '}':
 		case '[': case ']': case '.': case ',':
-		case ';':
+		case ';': case ':':
 			StartToken();
 			ParseOperator();
 			parsing = false;
