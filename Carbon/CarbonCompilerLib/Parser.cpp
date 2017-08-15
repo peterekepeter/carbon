@@ -69,6 +69,18 @@ bool Carbon::Parser::MoveNext()
 	case State::LocalEnd:
 		parsing = ParseLocalEnd();
 		break;
+	case State::BreakStatement:
+		parsing = ParseBreakStatement();
+		break;
+	case State::ContinueStatement:
+		parsing = ParseContinueStatement();
+		break;
+	case State::ReturnStatement:
+		parsing = ParseReturnStatement();
+		break;
+	case State::ReturnStatementWithExpression:
+		parsing = ParseReturnStatementWithExpression();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -124,6 +136,23 @@ bool Carbon::Parser::ParseStatement()
 		state.pop();
 		state.push(State::BlockOrObject);
 		return true; // continue parsing
+
+	case Token::Break:
+		state.push(State::BreakStatement);
+		lexer.MoveNext(); // consume break token
+		return true; // continue parsing
+
+	case Token::Continue:
+		state.push(State::ContinueStatement);
+		lexer.MoveNext(); // consume break token
+		return true; // continue parsing
+
+	case Token::Return:
+		state.push(State::ReturnStatement);
+		lexer.MoveNext(); // consume break token
+		return true;
+
+	// expression follows
 	case Token::Function: // function keyword
 	case Token::Local: // variable declaration keyword
 	// also for all atoms
@@ -141,6 +170,8 @@ bool Carbon::Parser::ParseStatement()
 		state.push(State::Expression); // start parsing expression
 		opStack.push(Op::Expression);
 		return true; //continue parsing
+
+	// file end
 	case Token::FileEnd:
 		state.pop();
 		instruction = InstructionType::END_STATEMENT;
@@ -484,6 +515,63 @@ bool Carbon::Parser::ParseLocalEnd()
 	state.pop();
 	instruction = InstructionType::LOCAL;
 	return false;
+}
+
+bool Carbon::Parser::ParseBreakStatement()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::EndStatement:
+		instruction = InstructionType::BREAK;
+		state.pop();
+		return false;
+	default:
+		throw ParseError("Break keyword should be followed by semicolon");
+	}
+}
+
+bool Carbon::Parser::ParseContinueStatement()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::EndStatement:
+		instruction = InstructionType::CONTINUE;
+		state.pop();
+		return false;
+	default:
+		throw ParseError("Continue keyword should be followed by semicolon");
+	}
+}
+
+bool Carbon::Parser::ParseReturnStatement()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::EndStatement:
+		instruction = InstructionType::RETURN0;
+		state.pop(); // go back to statement which handles the end statement token
+		return false; // yield return instruction
+
+	default: // must be a return with an expression
+		state.pop();
+		state.push(State::ReturnStatementWithExpression);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		return true; // continue with parsing the expression
+	}
+}
+
+bool Carbon::Parser::ParseReturnStatementWithExpression()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::EndStatement: // there should be an end statement
+		instruction = InstructionType::RETURN1;
+		state.pop(); // go back to statement which handles the end statement token
+		return false;
+	default:
+		throw ParseError("Expecting semicolon to terminate return statement");
+	}
 }
 
 Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const

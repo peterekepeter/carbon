@@ -280,6 +280,40 @@ namespace UnitTestCarbonCompilerLib
 			Assert::IsFalse(parser.MoveNext());
 		}
 
+		TEST_METHOD(ParserBreakSimple)
+		{
+			ss input("break;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BREAK);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserContinueSimple)
+		{
+			ss input("continue;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTINUE);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserReturnSimple)
+		{
+			ss input("return;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::RETURN0);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
+
+		TEST_METHOD(ParserReturnExpression)
+		{
+			ss input("return x*y;");  Lexer lexer(input); Parser parser(lexer);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::RETURN1);
+			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
+			Assert::IsFalse(parser.MoveNext());
+		}
 
 
 
