@@ -36,6 +36,7 @@ namespace Carbon
 			FunctionEnd,
 			FunctionBegin,
 			FunctionEndParameters,
+			LocalEnd,
 		};
 
 		// used for parsing expressions
@@ -84,6 +85,7 @@ namespace Carbon
 		bool ParseFunctionEnd();
 		bool ParseFunctionBegin();
 		bool ParseFunctionEndParameters();
+		bool ParseLocalEnd();
 
 		InstructionType OpToInstructionType(Op top) const;
 		InstructionType TokenToAtom(Token token);

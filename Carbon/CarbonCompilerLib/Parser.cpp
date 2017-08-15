@@ -66,6 +66,9 @@ bool Carbon::Parser::MoveNext()
 	case State::FunctionEnd:
 		parsing = ParseFunctionEnd();
 		break;
+	case State::LocalEnd:
+		parsing = ParseLocalEnd();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -476,6 +479,13 @@ bool Carbon::Parser::ParseFunctionEndParameters()
 	}
 }
 
+bool Carbon::Parser::ParseLocalEnd()
+{
+	state.pop();
+	instruction = InstructionType::LOCAL;
+	return false;
+}
+
 Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
 {
 	switch (top)
@@ -502,8 +512,14 @@ bool Carbon::Parser::ParseExpression()
 {
 	switch (auto token = lexer.GetToken())
 	{
-		// function expression
-	case Token::Function:
+	case Token::Local:
+		lexer.MoveNext(); // consume function token
+		state.pop();
+		state.push(State::LocalEnd);
+		state.push(State::Expression);
+		break;
+		
+	case Token::Function:// function expression
 		instruction = InstructionType::FUNCTIONBEGIN;
 		lexer.MoveNext(); // consume function token
 		state.push(State::FunctionBegin);
