@@ -25,6 +25,9 @@ bool Carbon::Parser::MoveNext()
 		parsing = ParseBlockOrObject();
 		break;
 	case State::BlockTemp:
+		parsing = ParseBlockTemp();
+		break;
+	case State::Block:
 		parsing = ParseBlock();
 		break;
 	case State::BlockOrObject2ndToken:
@@ -81,6 +84,18 @@ bool Carbon::Parser::MoveNext()
 	case State::ReturnStatementWithExpression:
 		parsing = ParseReturnStatementWithExpression();
 		break;
+	case State::IfBeginParam:
+		parsing = ParseIfBeginParam();
+		break;
+	case State::IfEndParam:
+		parsing = ParseIfEndParam();
+		break;
+	case State::IfElse:
+		parsing = ParseIfElse();
+		break;
+	case State::IfElseEnd:
+		parsing = ParseIfElseEnd();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -106,6 +121,10 @@ bool Carbon::Parser::ParseProgram()
 		// file just begin, totally accetable, move to next token
 		lexer.MoveNext();
 		return true; // continue parsing
+	case Token::BracesClose:
+		// we're in a code block, upper level should handle braces token
+		state.pop();
+		return true; //continue parsing
 	case Token::FileEnd:
 		// file just ended, we're in program state, so return true, no error
 		// this is the expected normal termination of a program
@@ -131,11 +150,24 @@ bool Carbon::Parser::ParseStatement()
 		// found instruction
 		instruction = InstructionType::END_STATEMENT;
 		return false; // yield end statement
+
 	case Token::BracesOpen:
 		lexer.MoveNext();
 		state.pop();
 		state.push(State::BlockOrObject);
 		return true; // continue parsing
+
+	case Token::If:
+		lexer.MoveNext(); // consume if token
+		instruction = InstructionType::CONTROL;
+		state.push(State::IfElse);
+		state.push(State::Statement);
+		state.push(State::IfEndParam);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		state.push(State::IfBeginParam);
+		return false; // yield control instruction
+
 
 	case Token::Break:
 		state.push(State::BreakStatement);
@@ -204,6 +236,7 @@ bool Carbon::Parser::ParseBlockOrObject()
 		// ok definitely not an object
 		state.pop();
 		state.push(State::Block);
+		state.push(State::Program);
 		instruction = InstructionType::BLOCKBEGIN;
 		return false; // yield
 	}
@@ -232,6 +265,8 @@ bool Carbon::Parser::ParseBlockTemp()
 {
 	state.pop(); // clear blocktemp
 	state.push(State::Block); // push block
+	state.push(State::Program);
+	state.push(State::Statement);
 	state.push(State::Expression); // and since we have an id or string, we're in expression
 	opStack.push(Op::Expression);
 	if (tempToken == Token::Id) {
@@ -244,7 +279,7 @@ bool Carbon::Parser::ParseBlockTemp()
 	} else {
 		throw std::runtime_error("unexpected parser state");
 	}
-	this->instructionData = tempBuffer.c_str();
+	this->instructionData = tempBuffer;
 	return false; //yield ATOM
 }
 
@@ -258,6 +293,7 @@ bool Carbon::Parser::ParseBlock()
 	case Token::BracesClose:
 		state.pop();
 		instruction = InstructionType::BLOCKEND;
+		lexer.MoveNext(); // consume braces close token
 		return false; // yield
 	case Token::FileEnd:
 		// expecting block to finish
@@ -572,6 +608,65 @@ bool Carbon::Parser::ParseReturnStatementWithExpression()
 	default:
 		throw ParseError("Expecting semicolon to terminate return statement");
 	}
+}
+
+bool Carbon::Parser::ParseIfBeginParam()
+{
+	switch(lexer.GetToken())
+	{
+	case Token::ParanthesisOpen:
+		// if parameter begins when paranthesis opens
+		lexer.MoveNext(); // consume token
+		state.pop(); // goto Expression
+		return true; // continue parsing
+	default:
+		// no other tokens are accepted in this state
+		throw ParseError("Expecting opening paranthesis for condition");
+	}
+}
+
+bool Carbon::Parser::ParseIfEndParam()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		// if parameter ends when paranthesis closes
+		lexer.MoveNext(); // consume token
+		state.pop(); // goto statement
+		return true; // continue parsing
+	default:
+		// no other tokens are accepted in this state
+		throw ParseError("Expecting opening paranthesis for condition");
+	}
+}
+
+bool Carbon::Parser::ParseIfElse()
+{
+	// case: we're in an if statement, after the implementation of then branch
+	switch (lexer.GetToken())
+	{
+	case Token::Else:
+		// if we find an else token here then we continue
+		// with the else branch of this if else statement
+		lexer.MoveNext(); // consume else token 
+		state.pop();
+		state.push(State::IfElseEnd);
+		state.push(State::Statement); //else branch
+		return true; // continue parsing
+	default:
+		instruction = InstructionType::IF; // we only have if then, no else
+		state.pop(); // on any other character should be handled by upper level
+		return false; // yield if
+	}
+}
+
+bool Carbon::Parser::ParseIfElseEnd()
+{
+	// we're at the end of an ifelse instruction, 
+	// then and else branches have been implemented
+	instruction = InstructionType::IFELSE;
+	state.pop();
+	return false; // yield ifelse instruction
 }
 
 Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const

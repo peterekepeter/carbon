@@ -41,6 +41,10 @@ namespace Carbon
 			ContinueStatement,
 			ReturnStatement,
 			ReturnStatementWithExpression,
+			IfBeginParam,
+			IfEndParam,
+			IfElse,
+			IfElseEnd,
 		};
 
 		// used for parsing expressions
@@ -94,6 +98,10 @@ namespace Carbon
 		bool ParseContinueStatement();
 		bool ParseReturnStatement();
 		bool ParseReturnStatementWithExpression();
+		bool ParseIfBeginParam();
+		bool ParseIfEndParam();
+		bool ParseIfElse();
+		bool ParseIfElseEnd();
 
 		InstructionType OpToInstructionType(Op top) const;
 		InstructionType TokenToAtom(Token token);
