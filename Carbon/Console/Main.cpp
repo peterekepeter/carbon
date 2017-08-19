@@ -3,6 +3,8 @@
 #include "../CarbonCommonLib/InstructionWriter.h"
 #include "../CarbonCoreLib/exec.hpp"
 #include "../CarbonCompilerLib/Compiler.h"
+#include "../CarbonCompilerLib/Parser.h"
+#include <iostream>
 
 
 std::string prepareString(const char* str) {
@@ -88,6 +90,14 @@ int main(int argc, char** argv, char** env) {
 		while (true) {
 			executor.SetInteractiveMode(true);
 			executor.ClearStatement();
-			CompileStdin(executor);
+			try
+			{
+				CompileStdin(executor);
+			}
+			catch(Carbon::ParserException exception)
+			{
+				std::cerr << exception.GetMessageWithLineAndPosition() << "\n";
+				std::cin.ignore(10000, '\n');
+			}
 		}
 }

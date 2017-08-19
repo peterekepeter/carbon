@@ -5,14 +5,42 @@
 
 namespace Carbon
 {
+	/// you should be catching this
+	class ParserException : public std::logic_error
+	{
+	public:
+		// at which line did the error occure, -1 if unknown
+		int Line;
+		// position in line at which there was an error, -1 if unknown
+		int LinePosition;
+
+		std::string GetMessage() const;
+
+		std::string GetMessageWithLineAndPosition() const;
+
+		explicit ParserException(const std::string& _Message);
+
+		explicit ParserException(const char* _Message);
+	};
+
+	// parser
 	class Parser : public InstructionReader
 	{
 	public:
+
+		// parser needs a lexer
 		Parser(Lexer& lexer);
 
-		virtual bool MoveNext();
-		virtual InstructionType ReadInstructionType();
-		virtual const char* ReadStringData();
+		// parse next instruction
+		bool MoveNext() override;
+
+		// read current instruction type
+		InstructionType ReadInstructionType() override;
+
+		// read current instruction data
+		const char* ReadStringData() override;
+
+
 	private:
 
 		// general parser states
@@ -149,8 +177,9 @@ namespace Carbon
 		bool expressionPrevAtom;
 		bool expressionPrevOp;
 			
-		std::invalid_argument ParseError();
-		std::invalid_argument ParseError(const char* message);
+		ParserException ParseError(); // create default parser error
+		ParserException ParseError(const char* message); // parser error with reason message
+
 
 	};
 

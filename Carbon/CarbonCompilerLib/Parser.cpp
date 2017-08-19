@@ -1,5 +1,25 @@
 #include "Parser.h"
 
+std::string Carbon::ParserException::GetMessage() const
+{
+	return this->what();
+}
+
+std::string Carbon::ParserException::GetMessageWithLineAndPosition() const
+{
+	std::stringstream ss;
+	ss << this->what() << " at line " << this->Line << " position " << this->LinePosition << ".";
+	return ss.str();
+}
+
+Carbon::ParserException::ParserException(const std::string& _Message): logic_error(_Message), Line(-1), LinePosition(-1)
+{
+}
+
+Carbon::ParserException::ParserException(const char* _Message): logic_error(_Message), Line(-1), LinePosition(-1)
+{
+}
+
 Carbon::Parser::Parser(Lexer & lexer) : lexer(lexer)
 {
 	state.push(State::Program);
@@ -1233,17 +1253,22 @@ bool Carbon::Parser::OpIsUnary(Op op)
 	}
 }
 
-std::invalid_argument Carbon::Parser::ParseError()
+Carbon::ParserException Carbon::Parser::ParseError()
 {
 	std::stringstream ss;
 	ss << "Unexpected" << lexer.GetData() << " at line " << lexer.GetLine() << " position " << lexer.GetPosition() << "\n";
-	return std::invalid_argument(ss.str());
+
+	ParserException exception(ss.str());
+	exception.Line = lexer.GetLine();
+	exception.LinePosition = lexer.GetPosition();
+	return exception;
 }
 
-std::invalid_argument Carbon::Parser::ParseError(const char* message)
+Carbon::ParserException Carbon::Parser::ParseError(const char* message)
 {
-	std::stringstream ss;
-	ss << message << " at line " << lexer.GetLine() << " position " << lexer.GetPosition() << "\n";
-	return std::invalid_argument(ss.str());
+	ParserException exception(message);
+	exception.Line = lexer.GetLine();
+	exception.LinePosition = lexer.GetPosition();
+	return exception;
 }
 
