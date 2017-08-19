@@ -96,6 +96,39 @@ bool Carbon::Parser::MoveNext()
 	case State::IfElseEnd:
 		parsing = ParseIfElseEnd();
 		break;
+	case State::LoopBegin:
+		parsing = ParseLoopBegin();
+		break;
+	case State::LoopEnd0:
+		parsing = ParseLoopEnd0();
+		break;
+	case State::LoopEnd1:
+		parsing = ParseLoopEnd1();
+		break;
+	case State::LoopEnd2:
+		parsing = ParseLoopEnd2();
+		break;
+	case State::LoopEnd3:
+		parsing = ParseLoopEnd3();
+		break;
+	case State::LoopParamBegin:
+		parsing = ParseLoopParamBegin();
+		break;
+	case State::LoopParamComma:
+		parsing = ParseLoopParamComma();
+		break;
+	case State::LoopParamSecond:
+		parsing = ParseLoopParamSecond();
+		break;
+	case State::LoopParamSecondComma:
+		parsing = ParseLoopParamSecondComma();
+		break;
+	case State::LoopParamThird:
+		parsing = ParseLoopParamThird();
+		break;
+	case State::LoopParamThirdEnd:
+		parsing = ParseLoopParamThirdEnd();
+		break;
 	default:
 		throw std::runtime_error("Unexpected compiler state.");
 		break;
@@ -156,6 +189,12 @@ bool Carbon::Parser::ParseStatement()
 		state.pop();
 		state.push(State::BlockOrObject);
 		return true; // continue parsing
+
+	case Token::Loop:
+		lexer.MoveNext(); // consume loop keyword
+		state.push(State::LoopBegin);
+		instruction = InstructionType::CONTROL;
+		return false; // yield control instruction
 
 	case Token::If:
 		lexer.MoveNext(); // consume if token
@@ -667,6 +706,154 @@ bool Carbon::Parser::ParseIfElseEnd()
 	instruction = InstructionType::IFELSE;
 	state.pop();
 	return false; // yield ifelse instruction
+}
+
+bool Carbon::Parser::ParseLoopBegin()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::BracesOpen:
+		state.pop();
+		state.push(State::LoopEnd0);
+		state.push(State::Statement); // it's a statement
+		return true; // continue parsing
+	case Token::ParanthesisOpen:
+		state.pop();
+		state.push(State::LoopParamBegin);
+		lexer.MoveNext(); // consume parantehsis open token
+		return true; // continue parsing
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Parser::ParseLoopEnd0()
+{
+	instruction = InstructionType::LOOP0;
+	state.pop();
+	return false; // yield loop instruction
+}
+
+bool Carbon::Parser::ParseLoopParamBegin()
+{
+	switch(lexer.GetToken())
+	{
+	case Token::Comma:
+		throw ParseError();
+	default:
+		state.pop();
+		state.push(State::LoopParamComma);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		return true; // continue parsing
+	}
+}
+
+bool Carbon::Parser::ParseLoopParamComma()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::Comma:
+		state.pop();
+		lexer.MoveNext(); // consume token
+		state.push(State::LoopParamSecond);
+		return true; // continue parsing
+	case Token::ParanthesisClose:
+		state.pop();
+		state.push(State::LoopEnd1);
+		state.push(State::Statement); // it's a statement
+		lexer.MoveNext(); // consume token
+		return true; // continue parsing
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Parser::ParseLoopParamSecond()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::Comma:
+		throw ParseError();
+	default:
+		state.pop();
+		state.push(State::LoopParamSecondComma);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		return true; // continue parsing
+	}
+}
+
+bool Carbon::Parser::ParseLoopParamSecondComma()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::Comma:
+		state.pop();
+		lexer.MoveNext(); // consume token
+		state.push(State::LoopParamThird);
+		return true; // continue parsing
+	case Token::ParanthesisClose:
+		state.pop();
+		state.push(State::LoopEnd2);
+		state.push(State::Statement); // it's a statement
+		lexer.MoveNext(); // consume token
+		return true; // continue parsing
+	default:
+		throw ParseError();
+	}
+}
+
+bool Carbon::Parser::ParseLoopEnd1()
+{
+	instruction = InstructionType::LOOP1;
+	state.pop();
+	return false; // yield loop instruction
+}
+
+bool Carbon::Parser::ParseLoopParamThird()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::Comma:
+		throw ParseError();
+	default:
+		state.pop();
+		state.push(State::LoopParamThirdEnd);
+		state.push(State::Expression);
+		opStack.push(Op::Expression);
+		return true; // continue parsing
+	}
+}
+
+bool Carbon::Parser::ParseLoopEnd2()
+{
+	instruction = InstructionType::LOOP2;
+	state.pop();
+	return false; // yield loop instruction
+}
+
+bool Carbon::Parser::ParseLoopParamThirdEnd()
+{
+	switch (lexer.GetToken())
+	{
+	case Token::ParanthesisClose:
+		state.pop();
+		state.push(State::LoopEnd3);
+		state.push(State::Statement); // it's a statement
+		lexer.MoveNext(); // consume token
+		return true; // continue parsing
+	default:
+		throw ParseError();
+	}
+
+}
+
+bool Carbon::Parser::ParseLoopEnd3()
+{
+	instruction = InstructionType::LOOP3;
+	state.pop();
+	return false; // yield loop instruction
 }
 
 Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const

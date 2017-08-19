@@ -45,6 +45,17 @@ namespace Carbon
 			IfEndParam,
 			IfElse,
 			IfElseEnd,
+			LoopBegin,
+			LoopEnd0,
+			LoopParamBegin,
+			LoopParamComma,
+			LoopParamSecond,
+			LoopEnd1,
+			LoopParamSecondComma,
+			LoopParamThird,
+			LoopEnd2,
+			LoopParamThirdEnd,
+			LoopEnd3,
 		};
 
 		// used for parsing expressions
@@ -102,6 +113,17 @@ namespace Carbon
 		bool ParseIfEndParam();
 		bool ParseIfElse();
 		bool ParseIfElseEnd();
+		bool ParseLoopBegin();
+		bool ParseLoopEnd0();
+		bool ParseLoopParamBegin();
+		bool ParseLoopParamComma();
+		bool ParseLoopParamSecond();
+		bool ParseLoopParamSecondComma();
+		bool ParseLoopEnd1();
+		bool ParseLoopParamThird();
+		bool ParseLoopEnd2();
+		bool ParseLoopParamThirdEnd();
+		bool ParseLoopEnd3();
 
 		InstructionType OpToInstructionType(Op top) const;
 		InstructionType TokenToAtom(Token token);
