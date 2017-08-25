@@ -1256,8 +1256,7 @@ bool Carbon::Parser::OpIsUnary(Op op)
 Carbon::ParserException Carbon::Parser::ParseError()
 {
 	std::stringstream ss;
-	ss << "Unexpected" << lexer.GetData() << " at line " << lexer.GetLine() << " position " << lexer.GetPosition() << "\n";
-
+	ss << "Unexpected " << lexer.GetData();
 	ParserException exception(ss.str());
 	exception.Line = lexer.GetLine();
 	exception.LinePosition = lexer.GetPosition();

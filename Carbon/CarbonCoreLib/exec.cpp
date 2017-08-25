@@ -647,6 +647,11 @@ namespace Carbon {
 			case InstructionType::END_STATEMENT:
 			end_statement:
 				if (imp->SymbolTable.GetLevel() == 1 && imp->ControlLevel == 0) {
+					if (imp->stack.empty() == true)
+					{
+						// if stack is empty we have nothing left to do
+						break; // exit early
+					}
 					if (imp->VERBOSE_TREE) {
 						recursive_print(*(imp->stack.top()));
 					}
