@@ -104,7 +104,7 @@ namespace UnitTestCarbonCompilerLib
 			ss input("x=3**7)"); Lexer lexer(input); Parser parser(lexer);
 			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
 			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::ExpectException<std::invalid_argument>([&]() { Assert::IsTrue(parser.MoveNext()); });
+			Assert::ExpectException<Carbon::ParserException>([&]() { Assert::IsTrue(parser.MoveNext()); });
 		}
 		
 		TEST_METHOD(ParserUnaryMinus)

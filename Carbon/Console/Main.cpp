@@ -96,7 +96,7 @@ int main(int argc, char** argv, char** env) {
 			}
 			catch(Carbon::ParserException exception)
 			{
-				std::cerr << exception.GetMessageWithLineAndPosition() << "\n";
+				std::cerr << "Parser Error: " << exception.GetMessageWithLineAndPosition() << "\n";
 				std::cin.ignore(10000, '\n');
 			}
 		}

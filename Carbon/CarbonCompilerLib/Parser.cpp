@@ -1144,7 +1144,7 @@ bool Carbon::Parser::ParseExpression()
 		}
 		else
 		{
-			throw ParseError("invalid parser state");
+			throw ParseError("Invalid parser state");
 		}
 		break;
 	default:
@@ -1224,7 +1224,7 @@ Carbon::Parser::Op Carbon::Parser::TokenToBinaryOp(Token token)
 		case Token::LessOrEqual:
 			return Op::LessOrEqual;
 		default:
-			throw ParseError("invalid operator");
+			throw ParseError("Invalid operator");
 	}
 }
 
@@ -1237,7 +1237,7 @@ Carbon::Parser::Op Carbon::Parser::TokenToUnaryOp(Token token)
 	case Token::Minus:
 		return Op::UnaryMinus;
 	default:
-		throw ParseError("invalid operator");
+		throw ParseError("Invalid operator");
 	}
 }
 
