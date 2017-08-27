@@ -352,6 +352,21 @@ namespace Carbon {
 			case InstructionType::NUM:
 				imp->stack.push(std::make_shared<NodeInteger>(atol(text)));
 				break;
+			case InstructionType::ONUM:
+				imp->stack.push(std::make_shared<NodeInteger>(std::stoi(text, nullptr,8)));
+				break;
+			case InstructionType::XNUM:
+				if (text[0]!=0 && text[1]!=0)
+					imp->stack.push(std::make_shared<NodeInteger>(std::stoi(text + 2, nullptr, 16)));
+				else
+					imp->stack.push(std::make_shared<NodeInteger>(std::stoi(text, nullptr, 16)));
+				break;
+			case InstructionType::BNUM:
+				if (text[0] != 0 && text[1] != 0)
+					imp->stack.push(std::make_shared<NodeInteger>(std::stoi(text + 2, nullptr, 2)));
+				else
+					imp->stack.push(std::make_shared<NodeInteger>(std::stoi(text, nullptr, 2)));
+				break;
 			case InstructionType::FLOAT:
 				imp->stack.push(std::make_shared<NodeFloat>(atof(text)));
 				break;
