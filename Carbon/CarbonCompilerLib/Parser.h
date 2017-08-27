@@ -176,6 +176,9 @@ namespace Carbon
 		std::string tempBuffer;
 		bool expressionPrevAtom;
 		bool expressionPrevOp;
+
+		// signals the lexer should be advanced
+		bool consumeToken = false;
 			
 		ParserException ParseError(); // create default parser error
 		ParserException ParseError(const char* message); // parser error with reason message
