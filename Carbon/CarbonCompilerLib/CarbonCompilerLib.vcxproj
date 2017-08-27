@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="Compiler.h" />
     <ClInclude Include="Parser.h" />
+    <ClInclude Include="ParserException.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Lexer.h" />
   </ItemGroup>

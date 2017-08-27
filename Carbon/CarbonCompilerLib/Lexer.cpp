@@ -236,7 +236,7 @@ void Carbon::Lexer::ParseString()
 		case  std::char_traits<char>::eof():
 			token = Token::FileEnd;
 			parsing = false;
-			throw std::invalid_argument("File ended before string finished.");
+			throw MakeError("File ended before string finished");
 			break;
 
 		}
@@ -402,7 +402,7 @@ void Carbon::Lexer::ParseOperator()
 		return;
 	}
 	// if required continue here for 3 char operators
-	throw std::logic_error("This line should never execute.");
+	throw MakeError("Invalid lexer state");
 }
 
 Carbon::Token Carbon::Lexer::DetectKeyword(const std::string& token)
@@ -463,6 +463,14 @@ void Carbon::Lexer::StartToken()
 	tokenStartLine = lineCounter;
 	tokenStartPosition = positionCounter;
 	buffer = "";
+}
+
+Carbon::ParserException Carbon::Lexer::MakeError(const char * message)
+{
+	ParserException exception(message);
+	exception.Line = lineCounter;
+	exception.LinePosition = positionCounter;
+	return exception;
 }
 
 // read next token
@@ -530,7 +538,7 @@ void Carbon::Lexer::MoveNext()
 
 		default:
 			token = Token::FileEnd;
-			throw std::invalid_argument("Unexpected character.");
+			throw MakeError("Unexpected character");
 			break;
 		}
 

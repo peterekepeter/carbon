@@ -5,24 +5,6 @@
 
 namespace Carbon
 {
-	/// you should be catching this
-	class ParserException : public std::logic_error
-	{
-	public:
-		// at which line did the error occure, -1 if unknown
-		int Line;
-		// position in line at which there was an error, -1 if unknown
-		int LinePosition;
-
-		std::string GetMessage() const;
-
-		std::string GetMessageWithLineAndPosition() const;
-
-		explicit ParserException(const std::string& _Message);
-
-		explicit ParserException(const char* _Message);
-	};
-
 	// parser
 	class Parser : public InstructionReader
 	{

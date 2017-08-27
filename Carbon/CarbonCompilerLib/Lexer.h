@@ -2,6 +2,7 @@
 
 #include <sstream>
 #include "Token.h"
+#include "ParserException.h"
 
 namespace Carbon
 {
@@ -48,6 +49,8 @@ namespace Carbon
 		Token token;
 		std::string buffer;
 		std::istream& input;
+		// creates an exception to be thrown
+		ParserException MakeError(const char* message);
 	};
 
 	
