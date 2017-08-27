@@ -1,7 +1,7 @@
 
 #include <string>
 #include "../CarbonCommonLib/InstructionWriter.h"
-#include "../CarbonCoreLib/exec.hpp"
+#include "../CarbonCoreLib/Executor.h"
 #include "../CarbonCompilerLib/Compiler.h"
 #include "../CarbonCompilerLib/Parser.h"
 #include <iostream>

@@ -83,43 +83,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CustomBuild Include="lexer.l">
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">flex lexer.l</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">generated/lexer.cpp</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">flex lexer.l</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">generated/lexer.cpp</Outputs>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CustomBuild>
-    <CustomBuild Include="parser.y">
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">bison parser.y -ogenerated/parser.cpp -d</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">bison parser.y -ogenerated/parser.cpp -d</Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">parser.cpp</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">parser.cpp</Outputs>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="exec.cpp" />
-    <ClCompile Include="oscompatibility.cpp" />
-    <ClCompile Include="yyerror.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="exec.hpp" />
-    <ClInclude Include="unistd.h" />
-    <ClInclude Include="yyerror.hpp" />
-    <ClInclude Include="lexer.hpp" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\BinseqLib\BinseqLib.vcxproj">
       <Project>{6b23c0d2-0a1b-4f79-9454-daf854102f26}</Project>
     </ProjectReference>
     <ProjectReference Include="..\CarbonCommonLib\CarbonCommonLib.vcxproj">
       <Project>{f8be3744-ae79-4846-9c99-c82547c2d9b3}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Executor.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Executor.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -16,47 +16,15 @@
     <Filter Include="Test Files">
       <UniqueIdentifier>{2ff9bab7-7746-4929-84bb-3cf10263563e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Header Files\Compiler">
-      <UniqueIdentifier>{67af6eef-1a6e-4908-8c7a-de1b63eb1a29}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Compiler">
-      <UniqueIdentifier>{08e62967-3daf-40e5-9b0c-2eb4f46dce09}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Compiler\CustomBuild">
-      <UniqueIdentifier>{57da175a-2c3f-4c5a-94a0-93668d0706ea}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="lexer.l">
-      <Filter>Source Files\Compiler\CustomBuild</Filter>
-    </CustomBuild>
-    <CustomBuild Include="parser.y">
-      <Filter>Source Files\Compiler\CustomBuild</Filter>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="yyerror.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="exec.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="oscompatibility.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="exec.hpp">
+    <ClInclude Include="Executor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="unistd.h">
-      <Filter>Header Files\Compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="lexer.hpp">
-      <Filter>Header Files\Compiler</Filter>
-    </ClInclude>
-    <ClInclude Include="yyerror.hpp">
-      <Filter>Header Files\Compiler</Filter>
-    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Executor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
