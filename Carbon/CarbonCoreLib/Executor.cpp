@@ -9,206 +9,18 @@
 #include <queue>
 
 #include "../BinseqLib/binseq.hpp"
+#include "AstNodes.h"
+#include "ExecutorException.h"
 
 #pragma warning(disable:4482)
 
-#define override virtual
-
-//#define VERBOSE_SUBMIT
-//#define VERBOSE_TREE
-
 namespace Carbon {
-	enum NODETYPE {
-		//`
-		NODE_NONE,
-		NODE_ERROR,
-		NODE_CONTINUE,
-		NODE_BREAK,
-		NODE_RETURN,
-		NODE_ATOM,
-		NODE_COMMAND,
-		//objects
-		NODE_INTEGER,
-		NODE_FLOAT,
-		NODE_STRING,
-		NODE_BIT,
-		NODE_BITS,
-		NODE_FUNCTION,
-		NODE_ARRAY,
-		NODE_OBJECT,
-	};
-
-	const char* GetTypeText(NODETYPE nodetype);
-
-	class Node {
-	public:
-		inline bool IsAtom() {
-			return NodeType == NODETYPE::NODE_ATOM;
-		}
-
-		inline bool IsCommand() {
-			return NodeType == NODETYPE::NODE_COMMAND;
-		}
-
-		inline NODETYPE GetNodeType() {
-			return NodeType;
-		}
-
-		virtual const char* GetText(); //get a description to help debug
-		virtual InstructionType GetCommandType();
-		virtual InstructionType GetAtomType();
-		virtual const char* GetAtomText(); //get parsed text    
-		Node(const NODETYPE);
-	protected:
-		NODETYPE NodeType;
-	};
-
-	class NodeAtom : public Node {
-	public:
-		InstructionType AtomType;
-		std::string AtomText;
-		NodeAtom(const InstructionType type, const char* text);
-		override const char* GetText();
-		override InstructionType GetAtomType();
-		override const char* GetAtomText(); //get parsed text
-	};
-
-	class NodeString : public Node {
-	public:
-		std::string Value;
-		override const char* GetText();
-		NodeString(const std::string str);
-	};
-
-	typedef std::shared_ptr<Node> (*native_function_ptr)(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node);
-
-	class NodeFunction : public Node {
-	public:
-		bool Native;
-		bool Pure;
-		NodeFunction(native_function_ptr nativeptr, bool pure);
-		NodeFunction(std::vector<std::string> parameterList, std::shared_ptr<Node> impl);
-		native_function_ptr nativeptr;
-		std::vector<std::string> ParameterList;
-		std::shared_ptr<Node> Implementation;
-		override const char* GetText();
-	};
-
-	class NodeInteger : public Node {
-	public:
-		long long Value;
-		override const char* GetText();
-		NodeInteger(long long value);
-		std::shared_ptr<std::string> text;
-	};
-
-	class NodeBits : public Node {
-	public:
-		binseq::bit_sequence Value;
-		override const char* GetText();
-		NodeBits();
-		NodeBits(const binseq::bit_sequence& b);
-		NodeBits(binseq::bit_sequence&& b);
-	};
+	
 
 	namespace native
 	{
-		static std::shared_ptr<Node> view(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node); //forwarddecl
+		static std::shared_ptr<Node> view(std::vector<std::shared_ptr<Node>>& node); //forwarddecl
 	};
-
-	const char* NodeBits::GetText() {
-		return "binseq";
-	}
-
-	NodeBits::NodeBits():Node(NODETYPE::NODE_BITS) {}
-
-	NodeBits::NodeBits(const binseq::bit_sequence& b):Node(NODETYPE::NODE_BITS) {
-		Value = b;
-	}
-
-	NodeBits::NodeBits(binseq::bit_sequence&& b):Node(NODETYPE::NODE_BITS) {
-		Value = b;
-	}
-
-	class NodeArray : public Node {
-	public:
-		std::vector<std::shared_ptr<Node>> Vector;
-		override const char* GetText();
-		NodeArray();
-		NodeArray(int size);
-		NodeArray(const std::vector<std::shared_ptr<Node>>& vec);
-		NodeArray(std::vector<std::shared_ptr<Node>>&& vec);
-	};
-
-	const char* NodeArray::GetText() {
-		return "array";
-	}
-
-	NodeArray::NodeArray(int size):Node(NODETYPE::NODE_ARRAY) {
-		Vector.resize(size);
-	}
-
-	NodeArray::NodeArray():Node(NODETYPE::NODE_ARRAY) { }
-
-	NodeArray::NodeArray(const std::vector<std::shared_ptr<Node>>& vec):Node(NODETYPE::NODE_ARRAY) {
-		Vector = vec;
-	};
-
-	NodeArray::NodeArray(std::vector<std::shared_ptr<Node>>&& vec):Node(NODETYPE::NODE_ARRAY) {
-		Vector = vec;
-	};
-
-	class NodeObject : public Node {
-	public:
-		std::unordered_map<std::string, std::shared_ptr<Node>> Map;
-		override const char* GetText();
-		NodeObject();
-	};
-
-	const char* NodeObject::GetText() {
-		return "object";
-	}
-
-	NodeObject::NodeObject():Node(NODETYPE::NODE_OBJECT) {};
-
-	class NodeBit : public Node {
-	public:
-		bool Value;
-		override const char* GetText();
-		NodeBit(bool value);
-	};
-
-	class NodeFloat : public Node {
-	public:
-		double Value;
-		override const char* GetText();
-		NodeFloat(double value);
-		std::shared_ptr<std::string> text;
-	};
-
-	class NodeCommand : public Node {
-	public:
-		InstructionType CommandType;
-		std::vector<std::shared_ptr<Node>> Children;
-		NodeCommand(const InstructionType);
-		override const char* GetText();
-		override InstructionType GetCommandType();
-		bool DoesPushStack;
-		bool IsPure;
-	};
-
-	class NodeReturn : public Node {
-	public:
-		std::shared_ptr<Node> Value;
-		NodeReturn(std::shared_ptr<Node> return_value);
-		override const char* GetText();
-	};
-
-	NodeReturn::NodeReturn(std::shared_ptr<Node> value) : Value(value), Node(NODETYPE::NODE_RETURN) {}
-
-	const char* NodeReturn::GetText() {
-		return "return";
-	}
 
 	class SymbolTableStack {
 	public:
@@ -253,25 +65,6 @@ namespace Carbon {
 		inline std::shared_ptr<Node> ExecuteLoop(NodeCommand& node);
 		inline std::shared_ptr<Node> ExecuteMemberOperator(NodeCommand& node);
 		inline std::shared_ptr<Node> Error(std::string message);
-	};
-
-	// generic execution context exception, this should be the base for all execution exceptions
-	class Exception {
-	public:
-		const char* Message;
-		Exception(const char* message) : Message(message) {};
-	};
-
-	// exception due to incomplete implementation of the executor
-	class ImplementationException : public Exception {
-	public:
-		ImplementationException(const char* message) : Exception(message) {};
-	};
-
-	// exception occured during the runtime of the interpreted language
-	class RuntimeException : public Exception	{
-	public:
-		RuntimeException(const char* message) : Exception(message) {};
 	};
 
 	Executor::Executor() {
@@ -383,6 +176,11 @@ namespace Carbon {
 
 		if (imp->VERBOSE_SUBMIT)
 			printf("ATM %d %s\n", type, imp->stack.top()->GetText());
+	}
+
+	void Executor::RegisterNativeFunction(const char* name, native_function_ptr fn, bool pure)
+	{
+		this->imp->RegisterNativeFunction(name, fn, pure);
 	}
 
 	void recursive_print(Node& node, int level = 0) {
@@ -515,8 +313,8 @@ namespace Carbon {
 							}
 							imp->stack.push(std::make_shared<NodeFunction>(plist, fimpl));
 							break;
-						} else throw ImplementationException("invalid");
-					} else throw ImplementationException("invalid");
+						} else throw ExecutorImplementationException("invalid");
+					} else throw ExecutorImplementationException("invalid");
 				}
 			}
 				imp->SymbolTable.Pop();
@@ -565,7 +363,7 @@ namespace Carbon {
 						for (int i=collector.size(); i>0; i-=2)
 						{
 							auto& key = reinterpret_cast<NodeAtom&>(*collector[i - 1]);
-							if (key.GetNodeType() == NODE_STRING)
+							if (key.GetNodeType() == NodeType::String)
 							{
 								auto& str = reinterpret_cast<NodeString&>(key);
 								map[str.Value] = collector[i - 2];
@@ -678,14 +476,14 @@ namespace Carbon {
 						//if console mode, execute
 						std::vector<std::shared_ptr<Node>> args; 
 						args.push_back(imp->ExecuteStatementList());
-						native::view(this->imp, args);
+						native::view(args);
 						imp->ClearStatementList();
 						printf(">> ");
 					}
 				}
-
+				
 				break;
-			default: throw ImplementationException("Unhandled command.");
+			default: throw ExecutorImplementationException("Unhandled command.");
 		}
 
 		//operations   
@@ -725,120 +523,19 @@ namespace Carbon {
 		return imp->stack.top()->GetText();
 	}
 
-	NodeAtom::NodeAtom(const InstructionType type, const char* text) : Node(NODETYPE::NODE_ATOM) {
-		this->AtomType = type;
-		this->AtomText = text;
-	}
-
-	Node::Node(const NODETYPE ntype) {
-		this->NodeType = ntype;
-	}
-
-	NodeCommand::NodeCommand(const InstructionType cmd) : Node(NODETYPE::NODE_COMMAND) {
-		this->DoesPushStack = false;
-		this->IsPure = true;
-		this->CommandType = cmd;
-	}
-
-	const char* NodeAtom::GetText() {
-		return this->AtomText.c_str();
-	}
-
-	const char* NodeCommand::GetText() {
-		switch (this->CommandType) {
-			case InstructionType::END_STATEMENT: return "ENDST";
-			case InstructionType::ASSIGN: return "ASSIGN";
-			case InstructionType::CALL: return "CALL";
-			case InstructionType::CALLBEGIN: return "CALLBEGIN";
-			case InstructionType::CALLEND: return "CALLEND";
-			case InstructionType::ADD: return "ADD";
-			case InstructionType::SUBTRACT: return "SUB";
-			case InstructionType::MULTIPLY: return "MUL";
-			case InstructionType::DIVIDE: return "DIV";
-			case InstructionType::POSITIVE: return "POS";
-			case InstructionType::NEGATIVE: return "NEG";
-			case InstructionType::COMP_EQ: return "COMP_EQ";
-			case InstructionType::COMP_NE: return "COMP_NE";
-			case InstructionType::COMP_GE: return "COMP_GE";
-			case InstructionType::COMP_LE: return "COMP_LE";
-			case InstructionType::COMP_GT: return "COMP_GT";
-			case InstructionType::COMP_LT: return "COMP_LT";
-			case InstructionType::BLOCK: return "BLOCK";
-			case InstructionType::BLOCKBEGIN: return "BLOCKBEGIN";
-			case InstructionType::BLOCKEND: return "BLOCKEND";
-			case InstructionType::FUNCTIONBEGIN: return "FUNCTIONBEGIN";
-			case InstructionType::FUNCTIONEND: return "FUNCTIONEND";
-			case InstructionType::LOCAL: return "LOCAL";
-			case InstructionType::CONTROL: return "CONTROL";
-			case InstructionType::IF: return "IF";
-			case InstructionType::IFELSE: return "IFELSE";
-			case InstructionType::LOOP0: return "LOOP0";
-			case InstructionType::LOOP1: return "LOOP1";
-			case InstructionType::LOOP2: return "LOOP2";
-			case InstructionType::LOOP3: return "LOOP3";
-			case InstructionType::MEMBER: return "MEMBER";
-			default: throw ImplementationException("Unhandled commandtype.");
-		}
-	}
-
-	const char* GetTypeText(NODETYPE nodetype) {
-		switch (nodetype) {
-			case NODETYPE::NODE_ATOM: return"identifier";
-			case NODETYPE::NODE_BIT: return "bit";
-			case NODETYPE::NODE_BITS: return "bitseq";
-			case NODETYPE::NODE_COMMAND: return "command";
-			case NODETYPE::NODE_FLOAT: return "float";
-			case NODETYPE::NODE_FUNCTION: return "function";
-			case NODETYPE::NODE_INTEGER: return "integer";
-			case NODETYPE::NODE_ERROR: return "error";
-			case NODETYPE::NODE_NONE: return "void";
-			case NODETYPE::NODE_STRING: return "string";
-			default: throw ImplementationException("Unhandled nodetype.");
-		}
-	}
-
-
-	const char* Node::GetText() {
-		throw ImplementationException("Unspecified node type.");
-	}
-
-	InstructionType Node::GetCommandType() {
-		throw ImplementationException("Unspecified node type.");
-	}
-
-	InstructionType Node::GetAtomType() {
-		throw ImplementationException("Unspecified node type.");
-	}
-
-	const char* Node::GetAtomText() {
-		throw ImplementationException("Unspecified node type.");
-	}
-
-	InstructionType NodeAtom::GetAtomType() {
-		return this->AtomType;
-	}
-
-	const char* NodeAtom::GetAtomText() {
-		return this->AtomText.c_str();
-	}
-
-	InstructionType NodeCommand::GetCommandType() {
-		return this->CommandType;
-	}
-
 	std::shared_ptr<Node> ExecutorImp::OptimizeIfPossible(std::shared_ptr<Node> node) {
 		if (node->IsCommand()) {
 			auto cmd = reinterpret_cast<NodeCommand*>(&*node);
 			if (cmd->Children.size() == 1) {
 				auto cmdtype = cmd->GetCommandType();
 				if (cmdtype == InstructionType::POSITIVE) {
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_INTEGER ||
-						cmd->Children[0]->GetNodeType() == NODETYPE::NODE_FLOAT)
+					if (cmd->Children[0]->GetNodeType() == NodeType::Integer ||
+						cmd->Children[0]->GetNodeType() == NodeType::Float)
 						return cmd->Children[0];
 				} else if (cmdtype == InstructionType::NEGATIVE) {
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_INTEGER)
+					if (cmd->Children[0]->GetNodeType() == NodeType::Integer)
 						return std::make_shared<NodeInteger>(- reinterpret_cast<NodeInteger*>(&*cmd->Children[0])->Value);
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_FLOAT)
+					if (cmd->Children[0]->GetNodeType() == NodeType::Float)
 						return std::make_shared<NodeFloat>(- reinterpret_cast<NodeFloat*>(&*cmd->Children[0])->Value);
 				}
 
@@ -849,8 +546,8 @@ namespace Carbon {
 				if (cmdtype == InstructionType::ADD || cmdtype == InstructionType::SUBTRACT ||
 					cmdtype == InstructionType::MULTIPLY || cmdtype == InstructionType::DIVIDE) {
 					//reduce integer arithmetic
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_INTEGER &&
-						cmd->Children[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
+					if (cmd->Children[0]->GetNodeType() == NodeType::Integer &&
+						cmd->Children[1]->GetNodeType() == NodeType::Integer) {
 						auto a = reinterpret_cast<NodeInteger*>(&*cmd->Children[0]);
 						auto b = reinterpret_cast<NodeInteger*>(&*cmd->Children[1]);
 						switch (cmdtype) {
@@ -859,7 +556,7 @@ namespace Carbon {
 							case InstructionType::MULTIPLY: return std::make_shared<NodeInteger>(a->Value * b->Value);
 							case InstructionType::DIVIDE:
 								if (b->Value == 0) {
-									throw RuntimeException("Division by zero.");
+									throw ExecutorRuntimeException("Division by zero.");
 									return node;
 								};
 								return std::make_shared<NodeInteger>(a->Value / b->Value);
@@ -867,8 +564,8 @@ namespace Carbon {
 					}
 
 					//reduce float arithmetic
-					if (cmd->Children[0]->GetNodeType() == NODETYPE::NODE_FLOAT &&
-						cmd->Children[1]->GetNodeType() == NODETYPE::NODE_FLOAT) {
+					if (cmd->Children[0]->GetNodeType() == NodeType::Float &&
+						cmd->Children[1]->GetNodeType() == NodeType::Float) {
 						auto a = reinterpret_cast<NodeFloat*>(&*cmd->Children[0]);
 						auto b = reinterpret_cast<NodeFloat*>(&*cmd->Children[1]);
 						switch (cmdtype) {
@@ -908,7 +605,7 @@ namespace Carbon {
 		return Value.c_str();
 	}
 
-	NodeString::NodeString(const std::string str) : Node(NODETYPE::NODE_STRING), Value(str) { }
+	NodeString::NodeString(const std::string str) : Node(NodeType::String), Value(str) { }
 
 	bool Executor::GetInteractiveMode() {
 		return this->imp->ShowPrompt;
@@ -923,6 +620,7 @@ namespace Carbon {
 	void Executor::ClearStatement() {
 		while (!this->imp->stack.empty())
 			this->imp->stack.pop();
+		imp->ClearStatementList();
 	}
 
 	void Executor::Execute() {
@@ -974,25 +672,25 @@ namespace Carbon {
 	}
 
 	NodeFunction::NodeFunction(native_function_ptr fptr, bool pure)
-		: Node(NODETYPE::NODE_FUNCTION), Native(true), nativeptr(fptr), Pure(pure) { }
+		: Node(NodeType::Function), Native(true), nativeptr(fptr), Pure(pure) { }
 
 	NodeFunction::NodeFunction(std::vector<std::string> parameterList, std::shared_ptr<Node> impl)
-		:Node(NODETYPE::NODE_FUNCTION), Native(false), nativeptr(nullptr), ParameterList(parameterList), Implementation(impl) {}
+		:Node(NodeType::Function), Native(false), nativeptr(nullptr), ParameterList(parameterList), Implementation(impl) {}
 
 	const char* NodeFunction::GetText() {
 		if (Native) return "native function";
 		else return "function";
 	}
 
-	NodeBit::NodeBit(bool value) : Value(value), Node(NODETYPE::NODE_BIT) {};
+	NodeBit::NodeBit(bool value) : Value(value), Node(NodeType::Bit) {};
 
 	const char* NodeBit::GetText() {
 		return Value ? "1" : "0";
 	};
 
-	NodeInteger::NodeInteger(long long value) : Node(NODETYPE::NODE_INTEGER), Value(value), text(nullptr) { }
+	NodeInteger::NodeInteger(long long value) : Node(NodeType::Integer), Value(value), text(nullptr) { }
 
-	NodeFloat::NodeFloat(double value) : Node(NODETYPE::NODE_FLOAT), Value(value), text(nullptr) { }
+	NodeFloat::NodeFloat(double value) : Node(NodeType::Float), Value(value), text(nullptr) { }
 
 	void ExecutorImp::RegisterNativeFunction(const char* name, native_function_ptr fptr, bool pure) {
 		auto newfunction = std::make_shared<NodeFunction>(fptr, pure);
@@ -1008,7 +706,7 @@ namespace Carbon {
 		std::shared_ptr<Node> node;
 		for (auto i = StatementList.begin(); i != StatementList.end(); ++i) {
 			node = ExecuteStatement(*i);
-			if (node->GetNodeType() == NODETYPE::NODE_ERROR) {
+			if (node->GetNodeType() == NodeType::Error) {
 				if (!ShowPrompt) {
 					fprintf(stderr, "Execution halted to prevent unknown sidefects.\n");
 				} else { }
@@ -1021,23 +719,23 @@ namespace Carbon {
 		if (node.Children.size() == 1) {
 			auto executed = ExecuteStatement(node.Children[0]);
 			switch (executed->GetNodeType()) {
-				case NODETYPE::NODE_INTEGER: {
+				case NodeType::Integer: {
 					auto& integer = reinterpret_cast<NodeInteger&>(*executed);
 					switch (node.CommandType) {
 						case InstructionType::POSITIVE: return executed;
 						case InstructionType::NEGATIVE: return std::make_shared<NodeInteger>(-integer.Value);
-						default: throw ImplementationException("unexpected commandtype");
+						default: throw ExecutorImplementationException("unexpected commandtype");
 					}
 				}
-				case NODETYPE::NODE_FLOAT: {
+				case NodeType::Float: {
 					auto& fval = reinterpret_cast<NodeFloat&>(*executed);
 					switch (node.CommandType) {
 						case InstructionType::POSITIVE: return executed;
 						case InstructionType::NEGATIVE: std::make_shared<NodeFloat>(-fval.Value);
-						default: throw ImplementationException("unexpected commandtype");
+						default: throw ExecutorImplementationException("unexpected commandtype");
 					}
 				}
-				case NODETYPE::NODE_BIT: {
+				case NodeType::Bit: {
 					auto& bval = reinterpret_cast<NodeBit&>(*executed);
 					switch (node.CommandType) {
 						case InstructionType::POSITIVE: return executed;
@@ -1045,9 +743,9 @@ namespace Carbon {
 					}
 				}
 				default:
-					return Error("prefix operators + or - only work on numeric values");
+					throw ExecutorRuntimeException("prefix operators + or - only work on numeric values");
 			}
-		} else throw ImplementationException("Prefix op can only have 1 child.");
+		} else throw ExecutorImplementationException("Prefix op can only have 1 child.");
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteInfixArithmetic(NodeCommand& node) {
@@ -1058,11 +756,11 @@ namespace Carbon {
 			}
 		reexecute:
 			switch (executed[0]->GetNodeType()) {
-				case NODETYPE::NODE_INTEGER: {
+				case NodeType::Integer: {
 					if (node.CommandType == InstructionType::MULTIPLY &&
-						executed[1]->GetNodeType() == NODETYPE::NODE_STRING ||
-						executed[1]->GetNodeType() == NODETYPE::NODE_BITS ||
-						executed[1]->GetNodeType() == NODETYPE::NODE_ARRAY) {
+						executed[1]->GetNodeType() == NodeType::String ||
+						executed[1]->GetNodeType() == NodeType::Bits ||
+						executed[1]->GetNodeType() == NodeType::DynamicArray) {
 						std::swap(node.Children[0], node.Children[1]); //optimize, next run wont enter this branch
 						std::swap(executed[0], executed[1]);
 						goto reexecute;
@@ -1074,7 +772,7 @@ namespace Carbon {
 						auto i = executed.begin();
 						auto acc = std::make_shared<NodeInteger>(reinterpret_cast<NodeInteger*>(&**i)->Value);
 						for (i++; i != executed.end(); i++) {
-							if ((*i)->GetNodeType() != NODETYPE::NODE_INTEGER) return Error("unexpected type in an arithmetic integer expression");
+							if ((*i)->GetNodeType() != NodeType::Integer) throw ExecutorRuntimeException("unexpected type in an arithmetic integer expression");
 							auto val = reinterpret_cast<NodeInteger*>(&**i)->Value;
 							switch (node.CommandType) {
 								case InstructionType::ADD: acc->Value += val;
@@ -1083,7 +781,7 @@ namespace Carbon {
 									break;
 								case InstructionType::MULTIPLY: acc->Value *= val;
 									break;
-								case InstructionType::DIVIDE: if (val == 0) return Error("integer division by 0"); else acc->Value /= val;
+								case InstructionType::DIVIDE: if (val == 0) throw ExecutorRuntimeException("integer division by 0"); else acc->Value /= val;
 									break;
 							}
 						}
@@ -1099,10 +797,10 @@ namespace Carbon {
 							case InstructionType::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
 							case InstructionType::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
 						}
-					} else return Error("error in expression");
+					} else throw ExecutorRuntimeException("error in expression");
 
 				}
-				case NODETYPE::NODE_FLOAT: {
+				case NodeType::Float: {
 
 					if (node.CommandType == InstructionType::ADD ||
 						node.CommandType == InstructionType::SUBTRACT ||
@@ -1111,7 +809,7 @@ namespace Carbon {
 						auto i = executed.begin();
 						auto acc = std::make_shared<NodeFloat>(reinterpret_cast<NodeFloat*>(&**i)->Value);
 						for (i++; i != executed.end(); i++) {
-							if ((*i)->GetNodeType() != NODETYPE::NODE_FLOAT) return Error("unexpected type in an arithmetic float expression");
+							if ((*i)->GetNodeType() != NodeType::Float) throw ExecutorRuntimeException("unexpected type in an arithmetic float expression");
 							auto val = reinterpret_cast<NodeFloat*>(&**i)->Value;
 							switch (node.CommandType) {
 								case InstructionType::ADD: acc->Value += val;
@@ -1138,14 +836,14 @@ namespace Carbon {
 						}
 					}
 				}
-				case NODETYPE::NODE_STRING: {
-					//if (executed[1]->GetNodeType()!=NODETYPE::NODE_STRING) return Error("non string value in string expression");
+				case NodeType::String: {
+					//if (executed[1]->GetNodeType()!=NodeType::String) throw ExecutorRuntimeException("non string value in string expression");
 					auto& left = reinterpret_cast<NodeString&>(*executed[0]);
 					NodeString* right = nullptr;
 
 					if (node.CommandType != InstructionType::MULTIPLY) {
-						if (executed[1]->GetNodeType() != NODETYPE::NODE_STRING) {
-							return Error("non string value in string expression");
+						if (executed[1]->GetNodeType() != NodeType::String) {
+							throw ExecutorRuntimeException("non string value in string expression");
 						} else {
 							right = reinterpret_cast<NodeString*>(&*executed[1]);
 						}
@@ -1155,22 +853,22 @@ namespace Carbon {
 						case InstructionType::ADD: {
 							std::string acc = left.Value;
 							for (unsigned i = 1; i < executed.size(); i++) {
-								if (executed[i]->GetNodeType() == NODETYPE::NODE_STRING) {
+								if (executed[i]->GetNodeType() == NodeType::String) {
 									acc += reinterpret_cast<NodeString&>(*executed[i]).Value;
-								} else return Error("non string value in string concatenation");
+								} else throw ExecutorRuntimeException("non string value in string concatenation");
 							}
 							return std::make_shared<NodeString>(acc);
 						}
 						case InstructionType::MULTIPLY:
 							if (executed.size() == 2) {
-								if (executed[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
-									int ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
+								if (executed[1]->GetNodeType() == NodeType::Integer) {
+									auto ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
 									std::string result;
 									result.reserve(left.Value.size() * ival);
 									while (ival--) result += left.Value;
 									return std::make_shared<NodeString>(result);
-								} else return Error("multiplication is not defined between the given arguments (try string * int)");
-							} else return Error("multiplication when left side is string is only valid with an integer");
+								} else throw ExecutorRuntimeException("multiplication is not defined between the given arguments (try string * int)");
+							} else throw ExecutorRuntimeException("multiplication when left side is string is only valid with an integer");
 							break;
 						case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(left.Value == right->Value);
 						case InstructionType::COMP_NE: return std::make_shared<NodeBit>(left.Value != right->Value);
@@ -1178,17 +876,17 @@ namespace Carbon {
 						case InstructionType::COMP_LE: return std::make_shared<NodeBit>(left.Value <= right->Value);
 						case InstructionType::COMP_GT: return std::make_shared<NodeBit>(left.Value > right->Value);
 						case InstructionType::COMP_LT: return std::make_shared<NodeBit>(left.Value < right->Value);
-						default: return Error("string doesn't support the requested command");
+						default: throw ExecutorRuntimeException("string doesn't support the requested command");
 					}
 				}
-				case NODETYPE::NODE_BITS: {
-					//if (executed[1]->GetNodeType()!=NODETYPE::NODE_STRING) return Error("non string value in string expression");
+				case NodeType::Bits: {
+					//if (executed[1]->GetNodeType()!=NodeType::String) throw ExecutorRuntimeException("non string value in string expression");
 					auto& left = reinterpret_cast<NodeBits&>(*executed[0]);
 					NodeBits* right = nullptr;
 
 					if (node.CommandType != InstructionType::MULTIPLY) {
-						if (executed[1]->GetNodeType() != NODETYPE::NODE_BITS) {
-							return Error("non binseq value in string expression");
+						if (executed[1]->GetNodeType() != NodeType::Bits) {
+							throw ExecutorRuntimeException("non binseq value in string expression");
 						} else {
 							right = reinterpret_cast<NodeBits*>(&*executed[1]);
 						}
@@ -1198,21 +896,21 @@ namespace Carbon {
 						case InstructionType::ADD: {
 							binseq::bit_sequence acc = left.Value;
 							for (unsigned i = 1; i < executed.size(); i++) {
-								if (executed[i]->GetNodeType() == NODETYPE::NODE_BITS) {
+								if (executed[i]->GetNodeType() == NodeType::Bits) {
 									acc = acc + reinterpret_cast<NodeBits&>(*executed[i]).Value;
-								} else return Error("non binseq value in binseq concatenation");
+								} else throw ExecutorRuntimeException("non binseq value in binseq concatenation");
 							}
 							return std::make_shared<NodeBits>(std::move(acc));
 						}
 						case InstructionType::MULTIPLY:
 							if (executed.size() == 2) {
-								if (executed[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
-									int ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
+								if (executed[1]->GetNodeType() == NodeType::Integer) {
+									auto ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
 									binseq::bit_sequence result;
 									while (ival--) result = result + left.Value;
 									return std::make_shared<NodeBits>(std::move(result));
-								} else return Error("multiplication is not defined between the given arguments (try binseq * int)");
-							} else return Error("multiplication when left side is binseq is only valid with an integer");
+								} else throw ExecutorRuntimeException("multiplication is not defined between the given arguments (try binseq * int)");
+							} else throw ExecutorRuntimeException("multiplication when left side is binseq is only valid with an integer");
 							break;
 						case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(left.Value == right->Value);
 						case InstructionType::COMP_NE: return std::make_shared<NodeBit>(left.Value != right->Value);
@@ -1220,16 +918,16 @@ namespace Carbon {
 						case InstructionType::COMP_LE: return std::make_shared<NodeBit>(left.Value <= right->Value);
 						case InstructionType::COMP_GT: return std::make_shared<NodeBit>(left.Value > right->Value);
 						case InstructionType::COMP_LT: return std::make_shared<NodeBit>(left.Value < right->Value);
-						default: return Error("binseq doesn't support the requested command");
+						default: throw ExecutorRuntimeException("binseq doesn't support the requested command");
 					}
 				}
-				case NODETYPE::NODE_ARRAY: {
+				case NodeType::DynamicArray: {
 					auto& left = reinterpret_cast<NodeArray&>(*executed[0]);
 					NodeArray* right = nullptr;
 
 					if (node.CommandType != InstructionType::MULTIPLY) {
-						if (executed[1]->GetNodeType() != NODETYPE::NODE_ARRAY) {
-							return Error("non array value in string expression");
+						if (executed[1]->GetNodeType() != NodeType::DynamicArray) {
+							throw ExecutorRuntimeException("non array value in string expression");
 						} else {
 							right = reinterpret_cast<NodeArray*>(&*executed[1]);
 						}
@@ -1240,19 +938,19 @@ namespace Carbon {
 							auto acc = std::make_shared<NodeArray>();
 							for (unsigned i = 1; i < executed.size(); i++) {
 								acc->Vector = left.Vector; //copy
-								if (executed[i]->GetNodeType() == NODETYPE::NODE_ARRAY) {
+								if (executed[i]->GetNodeType() == NodeType::DynamicArray) {
 									auto& other = reinterpret_cast<NodeArray&>(*executed[i]).Vector;
 									for (auto i = other.begin(); i != other.end(); i++) {
 										acc->Vector.push_back(*i);
 									}
-								} else return Error("non array value in array concatenation");
+								} else throw ExecutorRuntimeException("non array value in array concatenation");
 							}
 							return acc;
 						}
 						case InstructionType::MULTIPLY:
 							if (executed.size() == 2) {
-								if (executed[1]->GetNodeType() == NODETYPE::NODE_ARRAY) {
-									int ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
+								if (executed[1]->GetNodeType() == NodeType::DynamicArray) {
+									auto ival = reinterpret_cast<NodeInteger&>(*executed[1]).Value;
 									auto acc = std::make_shared<NodeArray>();
 									while (ival--) {
 										auto& other = left.Vector;
@@ -1261,19 +959,19 @@ namespace Carbon {
 										}
 									};
 									return acc;
-								} else return Error("multiplication is not defined between the given arguments (try array * int)");
-							} else return Error("multiplication when left side is array is only valid with an integer");
+								} else throw ExecutorRuntimeException("multiplication is not defined between the given arguments (try array * int)");
+							} else throw ExecutorRuntimeException("multiplication when left side is array is only valid with an integer");
 							break;
-						default: return Error("binseq doesn't support the requested command");
+						default: throw ExecutorRuntimeException("binseq doesn't support the requested command");
 					}
 				}
-				case NODETYPE::NODE_BIT: {
+				case NodeType::Bit: {
 					if (node.CommandType == InstructionType::ADD ||
 						node.CommandType == InstructionType::MULTIPLY) {
 						auto i = executed.begin();
 						auto acc = std::make_shared<NodeBit>(reinterpret_cast<NodeBit*>(&**i)->Value);
 						for (i++; i != executed.end(); i++) {
-							if ((*i)->GetNodeType() != NODETYPE::NODE_BIT) return Error("unexpected type in a bit expression");
+							if ((*i)->GetNodeType() != NodeType::Bit) throw ExecutorRuntimeException("unexpected type in a bit expression");
 							auto val = reinterpret_cast<NodeBit*>(&**i)->Value;
 							switch (node.CommandType) {
 								case InstructionType::ADD: acc->Value = acc->Value || val;
@@ -1289,16 +987,16 @@ namespace Carbon {
 						switch (node.CommandType) {
 							case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
 							case InstructionType::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
-							default: return Error("invalid expression");
+							default: throw ExecutorRuntimeException("invalid expression");
 						}
-					} else return Error("error in expression");
+					} else throw ExecutorRuntimeException("error in expression");
 
 				}
 
 				default:
-					return Error(std::string("arithmetic operators only works don't work on ") + (GetTypeText(executed[0]->GetNodeType())));
+					throw ExecutorRuntimeException(std::string("arithmetic operators only works don't work on ") + (GetTypeText(executed[0]->GetNodeType())));
 			}
-		} else throw ImplementationException("arithmetic operators need to have at least 2 arguments");
+		} else throw ExecutorImplementationException("arithmetic operators need to have at least 2 arguments");
 
 	}
 
@@ -1306,53 +1004,53 @@ namespace Carbon {
 		if (node.Children.size() == 2) {
 			auto lvalue = ExecuteStatement(node.Children[0]);
 			auto rvalue = reinterpret_cast<Node*>(&*node.Children[1]);
-			if (rvalue->GetNodeType() == NODETYPE::NODE_ATOM) {
+			if (rvalue->GetNodeType() == NodeType::Atom) {
 				auto atom = reinterpret_cast<NodeAtom*>(rvalue);
 				if (atom->GetAtomType() == InstructionType::ID) {
 					auto& idx = atom->AtomText;
-					if (lvalue->GetNodeType() == NODETYPE::NODE_OBJECT) {
+					if (lvalue->GetNodeType() == NodeType::DynamicObject) {
 						auto& object = reinterpret_cast<NodeObject&>(*lvalue);
 						auto& container = object.Map;
 						if (container.find(idx) != container.end())
 							return container[idx];
 						else
-							return std::make_shared<Node>(NODETYPE::NODE_NONE);
+							return std::make_shared<Node>(NodeType::None);
 					}
-					else return Error("left side of an object member operator must be an object");
+					else throw ExecutorRuntimeException("left side of an object member operator must be an object");
 				}
-				else return Error(atom->AtomText + " is not a valid indentifier");
+				else throw ExecutorRuntimeException(atom->AtomText + " is not a valid indentifier");
 			}
-			else return Error("right side of an object member operator must be an identifier");
+			else throw ExecutorRuntimeException("right side of an object member operator must be an identifier");
 		}
-		else throw ImplementationException("Member operator requires 2 parameters.");
+		else throw ExecutorImplementationException("Member operator requires 2 parameters.");
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteAssignment(NodeCommand& node) {
 		if (node.Children.size() == 2) {
 			auto lvalue = reinterpret_cast<Node*>(&*node.Children[0]);
 			auto rvalue = ExecuteStatement(node.Children[1]);
-			if (lvalue->GetNodeType() == NODETYPE::NODE_ATOM) {
+			if (lvalue->GetNodeType() == NodeType::Atom) {
 				auto atom = reinterpret_cast<NodeAtom*>(lvalue);
 				if (atom->GetAtomType() == InstructionType::ID) {
 					return this->SymbolTable[atom->AtomText] = rvalue;
-				} else return Error(atom->AtomText + " is not a valid indentifier");
+				} else throw ExecutorRuntimeException(atom->AtomText + " is not a valid indentifier");
 			} else if (lvalue->GetCommandType() == InstructionType::MEMBER)
 			{
 				auto& member = reinterpret_cast<NodeCommand&>(*lvalue);
 				auto container = ExecuteStatement(member.Children[0]);
-				if (container->GetNodeType() != NODE_OBJECT)
-					return Error("left side of member operator is not an object");
+				if (container->GetNodeType() != NodeType::DynamicObject)
+					throw ExecutorRuntimeException("left side of member operator is not an object");
 				auto& object = reinterpret_cast<NodeObject&>(*container);
 				auto& map = object.Map;
 				auto& index = member.Children[1];
 				if (index->GetAtomType() != InstructionType::ID)
-					return Error("right side of member oeprator is not an identifier");
+					throw ExecutorRuntimeException("right side of member oeprator is not an identifier");
 				auto& idx = reinterpret_cast<NodeAtom&>(*index).AtomText;
 				map[idx] = rvalue;
 				return rvalue;
 			}
-			return Error("left side of an assignment must be an identifier");
-		} else throw ImplementationException("Assignment requires 2 parameters.");
+			throw ExecutorRuntimeException("left side of an assignment must be an identifier");
+		} else throw ExecutorImplementationException("Assignment requires 2 parameters.");
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteBlock(NodeCommand& node) {
@@ -1360,10 +1058,10 @@ namespace Carbon {
 		for (auto i = node.Children.begin(); i != node.Children.end(); i++) {
 			result = ExecuteStatement(*i);
 			switch (result->GetNodeType()) {
-				case NODETYPE::NODE_ERROR: return result;
-				case NODETYPE::NODE_RETURN: return result;
-				case NODETYPE::NODE_BREAK: return result;
-				case NODETYPE::NODE_CONTINUE: return result;
+				case NodeType::Error: return result;
+				case NodeType::Return: return result;
+				case NodeType::Break: return result;
+				case NodeType::Continue: return result;
 				default: continue;
 			}
 		}
@@ -1373,16 +1071,16 @@ namespace Carbon {
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteConditional(NodeCommand& node) {
 		std::shared_ptr<Node> result;
 		auto cond = ExecuteStatement(node.Children[0]);
-		if (cond->GetNodeType() == NODETYPE::NODE_BIT) {
+		if (cond->GetNodeType() == NodeType::Bit) {
 			if (reinterpret_cast<NodeBit&>(*cond).Value) {
 				return ExecuteStatement(node.Children[1]);
 			} else if (node.Children.size() == 3) {
 				return ExecuteStatement(node.Children[2]);
 			} else {
-				return std::make_shared<Node>(NODETYPE::NODE_NONE);
+				return std::make_shared<Node>(NodeType::None);
 			}
-		} else return Error("condition is not a bit");
-		return std::make_shared<Node>(NODETYPE::NODE_NONE);
+		} else throw ExecutorRuntimeException("condition is not a bit");
+		return std::make_shared<Node>(NodeType::None);
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteLoop(NodeCommand& node) {
@@ -1407,27 +1105,27 @@ namespace Carbon {
 				iterate = node.Children[2];
 				body = node.Children[3];
 				break;
-			default: throw ImplementationException("loop expects 1 or 2 or 3 or 4 children");
+			default: throw ExecutorImplementationException("loop expects 1 or 2 or 3 or 4 children");
 		}
 
 		if (init != nullptr) ExecuteStatement(init);
 
 		while (true) {
 			auto condResult = ExecuteStatement(cond);
-			if (condResult->GetNodeType() == NODETYPE::NODE_BIT) {
+			if (condResult->GetNodeType() == NodeType::Bit) {
 				if (reinterpret_cast<NodeBit&>(*condResult).Value) {
 					auto result = ExecuteStatement(body);
-					if (result == nullptr || result->GetNodeType() == NODETYPE::NODE_BREAK)
-						return std::make_shared<Node>(NODETYPE::NODE_NONE);
-					if (result->GetNodeType() == NODETYPE::NODE_RETURN)
+					if (result == nullptr || result->GetNodeType() == NodeType::Break)
+						return std::make_shared<Node>(NodeType::None);
+					if (result->GetNodeType() == NodeType::Return)
 						return result;
 					if (iterate != nullptr) ExecuteStatement(iterate);
 				} else {
 					break;
 				}
-			} else return Error("condition did not evaluate to a bit");
+			} else throw ExecutorRuntimeException("condition did not evaluate to a bit");
 		}
-		return std::make_shared<Node>(NODETYPE::NODE_NONE);
+		return std::make_shared<Node>(NodeType::None);
 	}
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteCommand(NodeCommand& node) {
@@ -1490,10 +1188,10 @@ namespace Carbon {
 				result = ExecuteConditional(node);
 				break;
 			case InstructionType::BREAK:
-				result = std::make_shared<Node>(NODETYPE::NODE_BREAK);
+				result = std::make_shared<Node>(NodeType::Break);
 				break;
 			case InstructionType::CONTINUE:
-				result = std::make_shared<Node>(NODETYPE::NODE_CONTINUE);
+				result = std::make_shared<Node>(NodeType::Continue);
 				break;
 			case InstructionType::RETURN0:
 				result = std::make_shared<NodeReturn>(nullptr);
@@ -1505,8 +1203,8 @@ namespace Carbon {
 			case InstructionType::BLOCKEND:
 			case InstructionType::CALLBEGIN:
 			case InstructionType::CALLEND:
-			case InstructionType::END_STATEMENT: throw ImplementationException("should have been processed");
-			default: throw ImplementationException("unhandled case");
+			case InstructionType::END_STATEMENT: throw ExecutorImplementationException("should have been processed");
+			default: throw ExecutorImplementationException("unhandled case");
 		}
 
 		if (pushpop)
@@ -1517,17 +1215,17 @@ namespace Carbon {
 
 	std::shared_ptr<Node> ExecutorImp::ExecuteStatement(std::shared_ptr<Node> node) {
 		switch (node->GetNodeType()) {
-			case NODETYPE::NODE_COMMAND:
+			case NodeType::Command:
 				//pass by simple reference, we're already holding the shared ptr at least 2 times
 				return ExecuteCommand(reinterpret_cast<NodeCommand&>(*node));
-			case NODETYPE::NODE_ATOM: {
+			case NodeType::Atom: {
 				auto id = reinterpret_cast<NodeAtom&>(*node);
 				if (id.GetAtomType() == InstructionType::ID) {
 					auto ptr = SymbolTable[id.AtomText];
 					if (ptr != nullptr)
 						return ptr;
 					else
-						return Error(id.AtomText + " is undefined");
+						throw ExecutorRuntimeException(id.AtomText + " is undefined");
 				} else return node;
 			}
 			default:
@@ -1537,7 +1235,7 @@ namespace Carbon {
 
 	inline std::shared_ptr<Node> ExecutorImp::Error(std::string message) {
 		fprintf(stderr, "Runtime Error: %s.\n", message.c_str());
-		return std::make_shared<Node>(NODETYPE::NODE_ERROR);
+		return std::make_shared<Node>(NodeType::Error);
 	}
 
 	/* native function implementation */
@@ -1547,30 +1245,30 @@ namespace Carbon {
 		static void view_primitive(Node& node, const char* sep = 0) {
 			if (sep == 0) sep = " ";
 			switch (node.GetNodeType()) {
-				case NODETYPE::NODE_INTEGER: printf("%lld%s", reinterpret_cast<NodeInteger&>(node).Value, sep);
+				case NodeType::Integer: printf("%lld%s", reinterpret_cast<NodeInteger&>(node).Value, sep);
 					break;
-				case NODETYPE::NODE_FLOAT: printf("%g%s", reinterpret_cast<NodeFloat&>(node).Value, sep);
+				case NodeType::Float: printf("%g%s", reinterpret_cast<NodeFloat&>(node).Value, sep);
 					break;
-				case NODETYPE::NODE_STRING: printf("%s%s", reinterpret_cast<NodeString&>(node).Value.c_str(), sep);
+				case NodeType::String: printf("%s%s", reinterpret_cast<NodeString&>(node).Value.c_str(), sep);
 					break;
-				case NODETYPE::NODE_ARRAY: printf("array(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
+				case NodeType::DynamicArray: printf("array(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
 					break;
-				case NODETYPE::NODE_BITS: printf("binseq(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
+				case NodeType::Bits: printf("binseq(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
 					break;
-				case NODETYPE::NODE_OBJECT: printf("object%s", sep);
+				case NodeType::DynamicObject: printf("object%s", sep);
 					break;
-				case NODETYPE::NODE_FUNCTION: printf("function%s", sep);
+				case NodeType::Function: printf("function%s", sep);
 					break;
-				case NODETYPE::NODE_BIT: printf("%d%s", reinterpret_cast<NodeBit&>(node).Value, sep);
+				case NodeType::Bit: printf("%d%s", reinterpret_cast<NodeBit&>(node).Value, sep);
 					break;
 				default: printf("?%s", sep);
 			}
 		}
 
-		static std::shared_ptr<Node> view(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> view(std::vector<std::shared_ptr<Node>>& node) {
 			for (auto i = node.begin(); i != node.end(); i++) {
 				switch ((*i)->GetNodeType()) {
-					case NODETYPE::NODE_ARRAY: {
+					case NodeType::DynamicArray: {
 						auto& n = reinterpret_cast<NodeArray&>(**i);
 						auto size = n.Vector.size();
 						printf("array(%d): (", size);
@@ -1580,7 +1278,7 @@ namespace Carbon {
 						}
 					}
 						break;
-					case NODETYPE::NODE_OBJECT: {
+					case NodeType::DynamicObject: {
 						auto& n = reinterpret_cast<NodeObject&>(**i);
 						printf("object: (");
 						auto i = n.Map.begin();
@@ -1603,7 +1301,7 @@ namespace Carbon {
 						}
 					}
 						break;
-					case NODETYPE::NODE_BITS: {
+					case NodeType::Bits: {
 						auto& n = reinterpret_cast<NodeBits&>(**i);
 						auto size = n.Value.size();
 						auto i = size;
@@ -1629,66 +1327,66 @@ namespace Carbon {
 				}
 			}
 			printf("\n");
-			return std::make_shared<Node>(NODETYPE::NODE_NONE);
+			return std::make_shared<Node>(NodeType::None);
 		}
 
-		static std::shared_ptr<Node> system(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> system(std::vector<std::shared_ptr<Node>>& node) {
 			auto result = 0;
 			for (auto i = node.begin(); i != node.end(); i++) {
-				if ((*i)->GetNodeType() == NODETYPE::NODE_STRING) {
+				if ((*i)->GetNodeType() == NodeType::String) {
 					auto result = std::system(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
 					if (result != 0) return std::make_shared<NodeInteger>(result);
-				} else return ex->Error("parameter of system must be a string");
+				} else throw Carbon::ExecutorRuntimeException("parameter of system must be a string");
 			}
 			return std::make_shared<NodeInteger>(result);
 		}
 
-		static std::shared_ptr<Node> exit(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> exit(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 1) {
-				if (node[0]->GetNodeType() == NODETYPE::NODE_INTEGER) {
+				if (node[0]->GetNodeType() == NodeType::Integer) {
 					std::exit((int)reinterpret_cast<NodeInteger&>(*node[0]).Value);
-				} else return ex->Error("parameter of exit must be an integer");
+				} else throw Carbon::ExecutorRuntimeException("parameter of exit must be an integer");
 			} else if (node.size() == 0) {
 				std::exit(0);
-			} else return ex->Error("exit requires 0 or 1 paramter");
+			} else throw Carbon::ExecutorRuntimeException("exit requires 0 or 1 paramter");
 		}
 
 		static std::shared_ptr<Node> del(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			int released = 0;
 			for (auto i = node.begin(); i != node.end(); i++) {
-				if ((*i)->GetNodeType() == NODETYPE::NODE_STRING) {
+				if ((*i)->GetNodeType() == NodeType::String) {
 					auto str = reinterpret_cast<NodeString&>(**i);
 					auto& ptr = ex->SymbolTable[str.Value];
 					if (ptr != nullptr) {
 						ptr = nullptr;
 						released++;
 					}
-				} else return ex->Error("delete requires strings as a parameters");
+				} else throw Carbon::ExecutorRuntimeException("delete requires strings as a parameters");
 			}
 			return std::make_shared<NodeInteger>(released);
 		}
 
-		static std::shared_ptr<Node> file_read(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> file_read(std::vector<std::shared_ptr<Node>>& node) {
 			//read(16,32,"x.bin");
-			if (node.size() <= 0 || node.size() > 3) return ex->Error("incorrect number of parameters at file read call");
+			if (node.size() <= 0 || node.size() > 3) throw Carbon::ExecutorRuntimeException("incorrect number of parameters at file read call");
 			binseq::u64 read_offset = 0, read_size = -1;
 			const char* fname = nullptr;
-			if (node[0]->GetNodeType() == NODETYPE::NODE_INTEGER) {
+			if (node[0]->GetNodeType() == NodeType::Integer) {
 				read_size = reinterpret_cast<NodeInteger&>(*node[0]).Value;
-				if (node[1]->GetNodeType() == NODETYPE::NODE_INTEGER) {
+				if (node[1]->GetNodeType() == NodeType::Integer) {
 					read_offset = reinterpret_cast<NodeInteger&>(*node[1]).Value;
-					if (node[2]->GetNodeType() == NODETYPE::NODE_STRING) {
+					if (node[2]->GetNodeType() == NodeType::String) {
 						fname = reinterpret_cast<NodeString&>(*node[2]).Value.c_str();
-					} else return ex->Error("unexpected type, parameter 3 of file read");
-				} else if (node[1]->GetNodeType() == NODETYPE::NODE_STRING) {
+					} else throw Carbon::ExecutorRuntimeException("unexpected type, parameter 3 of file read");
+				} else if (node[1]->GetNodeType() == NodeType::String) {
 					fname = reinterpret_cast<NodeString&>(*node[1]).Value.c_str();
-				} else return ex->Error("unexpected type, parameter 2 of file read");
-			} else if (node[0]->GetNodeType() == NODETYPE::NODE_STRING) {
+				} else throw Carbon::ExecutorRuntimeException("unexpected type, parameter 2 of file read");
+			} else if (node[0]->GetNodeType() == NodeType::String) {
 				fname = reinterpret_cast<NodeString&>(*node[0]).Value.c_str();
-			} else return ex->Error("unexpected type, parameter 1 of file read");
+			} else throw Carbon::ExecutorRuntimeException("unexpected type, parameter 1 of file read");
 
 			auto f = fopen(fname, "rb");
-			if (f == nullptr) return ex->Error(std::string("failed to open file ") + fname);
+			if (f == nullptr) throw Carbon::ExecutorRuntimeException(std::string("failed to open file ") + fname);
 			fseek(f, 0,SEEK_END);
 			auto file_size = ftell(f) * 8;
 			if (read_size > file_size - read_offset) read_size = file_size - read_offset;
@@ -1703,21 +1401,21 @@ namespace Carbon {
 			return std::make_shared<NodeBits>(binseq::subseq(bits, read_misalign, read_size));
 		}
 
-		static std::shared_ptr<Node> file_write(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> file_write(std::vector<std::shared_ptr<Node>>& node) {
 			//write(b"0010",16,"x.bin");
 			if (node.size() == 2) {
-				if (node[0]->GetNodeType() != NODETYPE::NODE_BITS) return ex->Error("first parameter of file write must be a binseq");
-				if (node[1]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("second parameter of file write must be a string");
+				if (node[0]->GetNodeType() != NodeType::Bits) throw Carbon::ExecutorRuntimeException("first parameter of file write must be a binseq");
+				if (node[1]->GetNodeType() != NodeType::String) throw Carbon::ExecutorRuntimeException("second parameter of file write must be a string");
 				auto& seq = reinterpret_cast<NodeBits&>(*node[0]).Value;
 				auto fname = reinterpret_cast<NodeString&>(*node[1]).Value.c_str();
 				auto f = fopen(fname, "wb");
-				if (f == nullptr) return ex->Error(std::string("could not open ") + fname + " for writing");
+				if (f == nullptr) throw Carbon::ExecutorRuntimeException(std::string("could not open ") + fname + " for writing");
 				fwrite(seq.address(), (seq.size() + 7) >> 3, 1, f);
 				fclose(f);
 			} else if (node.size() == 3) {
-				if (node[0]->GetNodeType() != NODETYPE::NODE_BITS) return ex->Error("first parameter of file write must be a binseq");
-				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of file write must be an integer");
-				if (node[2]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("third parameter of file write must be a string");
+				if (node[0]->GetNodeType() != NodeType::Bits) throw Carbon::ExecutorRuntimeException("first parameter of file write must be a binseq");
+				if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("second parameter of file write must be an integer");
+				if (node[2]->GetNodeType() != NodeType::String) throw Carbon::ExecutorRuntimeException("third parameter of file write must be a string");
 				auto seq = &reinterpret_cast<NodeBits&>(*node[0]).Value;
 				auto localseq = binseq::bit_sequence();
 				auto write_offset = reinterpret_cast<NodeInteger&>(*node[1]).Value;
@@ -1744,88 +1442,88 @@ namespace Carbon {
 				fwrite(seq->address(), write_size, 1, f);
 				fclose(f);
 			}
-			return std::make_shared<Node>(NODETYPE::NODE_NONE);
+			return std::make_shared<Node>(NodeType::None);
 		}
 
-		static std::shared_ptr<Node> cast_integer(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_integer(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeInteger>(0);
 			} else if (node.size() == 1) {
 				long long ival = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_INTEGER: return node[0];
-					case NODETYPE::NODE_FLOAT: ival = (long long)reinterpret_cast<NodeFloat&>(*node[0]).Value;
+					case NodeType::Integer: return node[0];
+					case NodeType::Float: ival = (long long)reinterpret_cast<NodeFloat&>(*node[0]).Value;
 						break;
-					case NODETYPE::NODE_BIT: ival = (long long)reinterpret_cast<NodeBit&>(*node[0]).Value;
+					case NodeType::Bit: ival = (long long)reinterpret_cast<NodeBit&>(*node[0]).Value;
 						break;
-					case NODETYPE::NODE_STRING: ival = (long long)atol(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
+					case NodeType::String: ival = (long long)atol(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
 						break;
-					case NODETYPE::NODE_BITS: ival = *((long long*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
+					case NodeType::Bits: ival = *((long long*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
 						break;
-					default: return ex->Error("cannot convert parameter to integer");
+					default: throw Carbon::ExecutorRuntimeException("cannot convert parameter to integer");
 				}
 				return std::make_shared<NodeInteger>(ival);
 			}
-			return ex->Error("conversion function expects no more than one parameter");
+			throw Carbon::ExecutorRuntimeException("conversion function expects no more than one parameter");
 		}
 
-		static std::shared_ptr<Node> cast_float(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_float(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeFloat>(.0);
 			} else if (node.size() == 1) {
 				double val = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_FLOAT: return node[0];
-					case NODETYPE::NODE_INTEGER: val = (double)reinterpret_cast<NodeInteger&>(*node[0]).Value;
+					case NodeType::Float: return node[0];
+					case NodeType::Integer: val = (double)reinterpret_cast<NodeInteger&>(*node[0]).Value;
 						break;
-					case NODETYPE::NODE_BIT: val = (double)reinterpret_cast<NodeBit&>(*node[0]).Value;
+					case NodeType::Bit: val = (double)reinterpret_cast<NodeBit&>(*node[0]).Value;
 						break;
-					case NODETYPE::NODE_STRING: val = (double)atof(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
-					case NODETYPE::NODE_BITS: val = *((double*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
+					case NodeType::String: val = (double)atof(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
+					case NodeType::Bits: val = *((double*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
 						break;
-					default: return ex->Error("cannot convert parameter to float");
+					default: throw Carbon::ExecutorRuntimeException("cannot convert parameter to float");
 				}
 				return std::make_shared<NodeFloat>(val);
 			}
-			return ex->Error("conversion function expects no more than one parameter");
+			throw Carbon::ExecutorRuntimeException("conversion function expects no more than one parameter");
 		}
 
-		static std::shared_ptr<Node> cast_bit(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_bit(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeFloat>(.0);
 			} else if (node.size() == 1) {
 				bool val = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BIT: return node[0];
-					case NODETYPE::NODE_FLOAT: val = (bool) reinterpret_cast<NodeFloat&>(*node[0]).Value;
+					case NodeType::Bit: return node[0];
+					case NodeType::Float: val = (bool) reinterpret_cast<NodeFloat&>(*node[0]).Value;
 						break;
-					case NODETYPE::NODE_INTEGER: val = (bool) reinterpret_cast<NodeInteger&>(*node[0]).Value;
+					case NodeType::Integer: val = (bool) reinterpret_cast<NodeInteger&>(*node[0]).Value;
 						break;
-					case NODETYPE::NODE_STRING: val = !reinterpret_cast<NodeString&>(*node[0]).Value.compare("0") == 0;
+					case NodeType::String: val = !reinterpret_cast<NodeString&>(*node[0]).Value.compare("0") == 0;
 						break;
-					case NODETYPE::NODE_BITS: val = ((bool) reinterpret_cast<NodeBits&>(*node[0]).Value[0]);
+					case NodeType::Bits: val = ((bool) reinterpret_cast<NodeBits&>(*node[0]).Value[0]);
 						break;
-					default: return ex->Error("cannot convert parameter to bit");
+					default: throw Carbon::ExecutorRuntimeException("cannot convert parameter to bit");
 				}
 				return std::make_shared<NodeBit>(val);
 			}
-			return ex->Error("conversion function expects no more than one parameter");
+			throw Carbon::ExecutorRuntimeException("conversion function expects no more than one parameter");
 		}
 
-		static std::shared_ptr<Node> cast_string(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_string(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeFloat>(.0);
 			} else if (node.size() == 1) {
 				char buffer[256];
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BIT: sprintf_s(buffer, "%d", reinterpret_cast<NodeBit&>(*node[0]).Value);
+					case NodeType::Bit: sprintf_s(buffer, "%d", reinterpret_cast<NodeBit&>(*node[0]).Value);
 						break;
-					case NODETYPE::NODE_FLOAT: sprintf_s(buffer, "%g", reinterpret_cast<NodeFloat&>(*node[0]).Value);
+					case NodeType::Float: sprintf_s(buffer, "%g", reinterpret_cast<NodeFloat&>(*node[0]).Value);
 						break;
-					case NODETYPE::NODE_INTEGER: sprintf_s(buffer, "%lld", reinterpret_cast<NodeInteger&>(*node[0]).Value);
+					case NodeType::Integer: sprintf_s(buffer, "%lld", reinterpret_cast<NodeInteger&>(*node[0]).Value);
 						break;
-					case NODETYPE::NODE_STRING: return node[0];
-					case NODETYPE::NODE_BITS: {
+					case NodeType::String: return node[0];
+					case NodeType::Bits: {
 						auto newnode = std::make_shared<NodeString>("");
 						auto& bitsnode = reinterpret_cast<NodeBits&>(*node[0]);
 						auto bytestream = (binseq::u8*) bitsnode.Value.address();
@@ -1836,69 +1534,69 @@ namespace Carbon {
 						return newnode;
 					}
 						break;
-					default: return ex->Error("cannot convert parameter to float");
+					default: throw Carbon::ExecutorRuntimeException("cannot convert parameter to float");
 				}
 				return std::make_shared<NodeString>(buffer);
 			}
-			return ex->Error("conversion function expects no more than one parameter");
+			throw Carbon::ExecutorRuntimeException("conversion function expects no more than one parameter");
 		}
 
-		static std::shared_ptr<Node> cast_bits(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_bits(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeBits>();
 			} else if (node.size() == 1) {
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BIT:
+					case NodeType::Bit:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence(reinterpret_cast<NodeBit&>(*node[0]).Value));
-					case NODETYPE::NODE_INTEGER:
+					case NodeType::Integer:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence((binseq::u64)reinterpret_cast<NodeInteger&>(*node[0]).Value));
-					case NODETYPE::NODE_FLOAT:
+					case NodeType::Float:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence(*((binseq::u64*)&reinterpret_cast<NodeFloat&>(*node[0]).Value)));
-					case NODETYPE::NODE_BITS: return node[0];
-					case NODETYPE::NODE_STRING:
+					case NodeType::Bits: return node[0];
+					case NodeType::String:
 						return std::make_shared<NodeBits>(
 							binseq::bit_sequence(reinterpret_cast<NodeString&>(*node[0]).Value.c_str()));
 						break;
-					default: return ex->Error("cannot convert parameter to binseq");
+					default: throw Carbon::ExecutorRuntimeException("cannot convert parameter to binseq");
 				}
 			}
-			return ex->Error("conversion function expects no more than one parameter");
+			throw Carbon::ExecutorRuntimeException("conversion function expects no more than one parameter");
 		}
 
-		static std::shared_ptr<Node> cast_array(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_array(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeArray>();
 			} else if (node.size() == 1) {
-				if (node[0]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("array can only receive integer as a parameter");
+				if (node[0]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("array can only receive integer as a parameter");
 				auto& size = reinterpret_cast<NodeInteger&>(*node[0]).Value;
 				auto newnode = std::make_shared<NodeArray>(size);
-				auto nothing = std::make_shared<Node>(NODETYPE::NODE_NONE);
+				auto nothing = std::make_shared<Node>(NodeType::None);
 				auto& vec = newnode->Vector;
 				for (auto i = vec.begin(); i != vec.end(); i++) {
 					*i = nothing;
 				}
 				return newnode;
 			} else {
-				return ex->Error("array can't have more than 1 parameter");
+				throw Carbon::ExecutorRuntimeException("array can't have more than 1 parameter");
 			}
 		}
 
-		static std::shared_ptr<Node> cast_object(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> cast_object(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeObject>();
-			} else return ex->Error("object constructor accepts no parameters");
+			} else throw Carbon::ExecutorRuntimeException("object constructor accepts no parameters");
 		}
 
-		static std::shared_ptr<Node> type(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> type(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				return std::make_shared<NodeString>("void");
 			} else if (node.size() == 1) {
 				const char* r = "unknown";
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_ATOM:
+					case NodeType::Atom:
 						switch (node[0]->GetAtomType()) {
 							case InstructionType::ID: r = "identifier";
 								break;
@@ -1906,123 +1604,123 @@ namespace Carbon {
 								break;
 						}
 						break;
-					case NODETYPE::NODE_BIT: r = "bit";
+					case NodeType::Bit: r = "bit";
 						break;
-					case NODETYPE::NODE_BITS: r = "binseq";
+					case NodeType::Bits: r = "binseq";
 						break;
-					case NODETYPE::NODE_COMMAND: r = "command";
+					case NodeType::Command: r = "command";
 						break;
-					case NODETYPE::NODE_FLOAT: r = "float";
+					case NodeType::Float: r = "float";
 						break;
-					case NODETYPE::NODE_FUNCTION: r = "function";
+					case NodeType::Function: r = "function";
 						break;
-					case NODETYPE::NODE_INTEGER: r = "integer";
+					case NodeType::Integer: r = "integer";
 						break;
-					case NODETYPE::NODE_ERROR: r = "error";
+					case NodeType::Error: r = "error";
 						break;
-					case NODETYPE::NODE_NONE: r = "void";
+					case NodeType::None: r = "void";
 						break;
-					case NODETYPE::NODE_STRING: r = "string";
+					case NodeType::String: r = "string";
 						break;
-					case NODETYPE::NODE_ARRAY: r = "array";
+					case NodeType::DynamicArray: r = "array";
 						break;
-					case NODETYPE::NODE_OBJECT: r = "object";
+					case NodeType::DynamicObject: r = "object";
 						break;
 				}
 				return std::make_shared<NodeString>(r);
 			}
-			return ex->Error("type function expects no more than one parameter");
+			throw Carbon::ExecutorRuntimeException("type function expects no more than one parameter");
 		}
 
 
-		static std::shared_ptr<Node> get(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> get(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_STRING: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
+					case NodeType::String: {
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("string can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeString&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
-						if (idx < 0 || idx >= container.size()) return ex->Error("string index out of bounds");
+						if (idx < 0 || idx >= container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
 						return std::make_shared<NodeInteger>((unsigned char)container[idx]);
 					}
 						break;
 
-					case NODETYPE::NODE_ARRAY: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("array can only be indexed by integer");
+					case NodeType::DynamicArray: {
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("array can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeArray&>(*node[0]).Vector;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
-						if (idx < 0 || idx >= container.size()) return ex->Error("string index out of bounds");
+						if (idx < 0 || idx >= container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
 						return container[idx];
 					}
 						break;
 
-					case NODETYPE::NODE_BITS: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
+					case NodeType::Bits: {
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("string can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeBits&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
-						if (idx < 0 || idx >= container.size()) return ex->Error("string index out of bounds");
+						if (idx < 0 || idx >= container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
 						return std::make_shared<NodeBit>((bool)container[idx]);
 						return node[2];
 					}
 						break;
 
-					case NODETYPE::NODE_OBJECT: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("object can only be indexed by string");
+					case NodeType::DynamicObject: {
+						if (node[1]->GetNodeType() != NodeType::String) throw Carbon::ExecutorRuntimeException("object can only be indexed by string");
 						auto& container = reinterpret_cast<NodeObject&>(*node[0]).Map;
 						auto& idx = reinterpret_cast<NodeString&>(*node[1]).Value;
 						if (container.find(idx) != container.end())
 							return container[idx];
 						else
-							return std::make_shared<Node>(NODETYPE::NODE_NONE);
+							return std::make_shared<Node>(NodeType::None);
 					}
 						break;
 
-					default: return ex->Error("get requires the first parameter to be a container");
+					default: throw Carbon::ExecutorRuntimeException("get requires the first parameter to be a container");
 				}
-			} else return ex->Error("get requires one container and one index");
+			} else throw Carbon::ExecutorRuntimeException("get requires one container and one index");
 		}
 
 
-		static std::shared_ptr<Node> set(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> set(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 3) {
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_STRING: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
-						if (node[2]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("value must be an integer");
+					case NodeType::String: {
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("string can only be indexed by integer");
+						if (node[2]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("value must be an integer");
 						auto& container = reinterpret_cast<NodeString&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = reinterpret_cast<NodeInteger&>(*node[2]).Value;
-						if (idx < 0 || idx > container.size()) return ex->Error("string index out of bounds");
+						if (idx < 0 || idx > container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
 						container[idx] = val;
 						return node[2];
 					}
 						break;
 
-					case NODETYPE::NODE_ARRAY: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("array can only be indexed by integer");
+					case NodeType::DynamicArray: {
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("array can only be indexed by integer");
 						auto& container = reinterpret_cast<NodeArray&>(*node[0]).Vector;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = node[2];
-						if (idx < 0 || idx > container.size()) return ex->Error("string index out of bounds");
+						if (idx < 0 || idx > container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
 						container[idx] = val;
 						return node[2];
 					}
 						break;
 
-					case NODETYPE::NODE_BITS: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("string can only be indexed by integer");
-						if (node[2]->GetNodeType() != NODETYPE::NODE_BIT) return ex->Error("value must be a bit");
+					case NodeType::Bits: {
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("string can only be indexed by integer");
+						if (node[2]->GetNodeType() != NodeType::Bit) throw Carbon::ExecutorRuntimeException("value must be a bit");
 						auto& container = reinterpret_cast<NodeBits&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = reinterpret_cast<NodeBit&>(*node[2]).Value;
-						if (idx < 0 || idx > container.size()) return ex->Error("string index out of bounds");
+						if (idx < 0 || idx > container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
 						container[idx] = val;
 						return node[2];
 					}
 						break;
 
-					case NODETYPE::NODE_OBJECT: {
-						if (node[1]->GetNodeType() != NODETYPE::NODE_STRING) return ex->Error("object can only be indexed by string");
+					case NodeType::DynamicObject: {
+						if (node[1]->GetNodeType() != NodeType::String) throw Carbon::ExecutorRuntimeException("object can only be indexed by string");
 						auto& container = reinterpret_cast<NodeObject&>(*node[0]).Map;
 						auto& idx = reinterpret_cast<NodeString&>(*node[1]).Value;
 						auto& val = node[2];
@@ -2031,25 +1729,25 @@ namespace Carbon {
 					}
 						break;
 
-					default: return ex->Error("set requires the first parameter to be a container");
+					default: throw Carbon::ExecutorRuntimeException("set requires the first parameter to be a container");
 				}
-			} else return ex->Error("set requires container, index and value");
+			} else throw Carbon::ExecutorRuntimeException("set requires container, index and value");
 		}
 
-		static std::shared_ptr<Node> length(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> length(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 1) {
 				long long val = 0;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_STRING: val = reinterpret_cast<NodeString&>(*node[0]).Value.size();
+					case NodeType::String: val = reinterpret_cast<NodeString&>(*node[0]).Value.size();
 						break;
-					case NODETYPE::NODE_ARRAY: val = reinterpret_cast<NodeArray&>(*node[0]).Vector.size();
+					case NodeType::DynamicArray: val = reinterpret_cast<NodeArray&>(*node[0]).Vector.size();
 						break;
-					case NODETYPE::NODE_BITS: val = reinterpret_cast<NodeBits&>(*node[0]).Value.size();
+					case NodeType::Bits: val = reinterpret_cast<NodeBits&>(*node[0]).Value.size();
 						break;
-					default: return ex->Error("parameter has no length, only array, string and binseq has length");
+					default: throw Carbon::ExecutorRuntimeException("parameter has no length, only array, string and binseq has length");
 				}
 				return std::make_shared<NodeInteger>(val);
-			} else return ex->Error("length requires one parameter");
+			} else throw Carbon::ExecutorRuntimeException("length requires one parameter");
 		}
 
 		template <class T>
@@ -2073,7 +1771,7 @@ namespace Carbon {
 		template <class T>
 		static T vec_subseq(T& vec, long long count, long long offset) {
 			T result;
-			for (auto i = vec.begin() + offset; i != vec.end() && count > 0; i++ , count--) {
+			for (auto i = vec.begin() + offset; i != vec.end() && count > 0; ++i , count--) {
 				result.push_back(*i);
 			}
 			return result;
@@ -2084,90 +1782,89 @@ namespace Carbon {
 			T result;
 			auto i = vec.begin();
 			while (count) {
-				if (i == vec.end());
-				i = vec.begin();
+				if (i == vec.end()) i = vec.begin();
 				result.push_back(*i);
-				i++;
+				++i;
 				count--;
 			}
 			return result;
 		}
 
-		static std::shared_ptr<Node> sel_head(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> sel_head(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
-				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of head must be an integer");
+				if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("second parameter of head must be an integer");
 				auto count = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::head(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
-					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_head(reinterpret_cast<NodeString&>(*node[0]).Value, count));
-					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_head(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
-					default: return ex->Error("head only works on sequences");
+					case NodeType::Bits: return std::make_shared<NodeBits>(binseq::head(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
+					case NodeType::String: return std::make_shared<NodeString>(vec_head(reinterpret_cast<NodeString&>(*node[0]).Value, count));
+					case NodeType::DynamicArray: return std::make_shared<NodeArray>(vec_head(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
+					default: throw Carbon::ExecutorRuntimeException("head only works on sequences");
 				}
-			} else return ex->Error("head needs 2 parameters, a sequence and an integer");
+			} else throw Carbon::ExecutorRuntimeException("head needs 2 parameters, a sequence and an integer");
 		}
 
-		static std::shared_ptr<Node> sel_tail(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> sel_tail(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
-				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of tail must be an integer");
+				if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("second parameter of tail must be an integer");
 				auto count = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::tail(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
-					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_tail(reinterpret_cast<NodeString&>(*node[0]).Value, count));
-					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_tail(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
-					default: return ex->Error("tail only works on sequences");
+					case NodeType::Bits: return std::make_shared<NodeBits>(binseq::tail(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
+					case NodeType::String: return std::make_shared<NodeString>(vec_tail(reinterpret_cast<NodeString&>(*node[0]).Value, count));
+					case NodeType::DynamicArray: return std::make_shared<NodeArray>(vec_tail(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
+					default: throw Carbon::ExecutorRuntimeException("tail only works on sequences");
 				}
-			} else return ex->Error("tail needs 2 parameters, a sequence and an integer");
+			} else throw Carbon::ExecutorRuntimeException("tail needs 2 parameters, a sequence and an integer");
 		}
 
-		static std::shared_ptr<Node> sel_subseq(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> sel_subseq(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 3) {
-				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of subseq must be an integer");
-				if (node[2]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("third parameter of subseq must be an integer");
+				if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("second parameter of subseq must be an integer");
+				if (node[2]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("third parameter of subseq must be an integer");
 				auto offset = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				auto count = reinterpret_cast<NodeInteger&>(*node[2]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::subseq(reinterpret_cast<NodeBits&>(*node[0]).Value, offset, count));
-					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_subseq(reinterpret_cast<NodeString&>(*node[0]).Value, offset, count));
-					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_subseq(reinterpret_cast<NodeArray&>(*node[0]).Vector, offset, count));
-					default: return ex->Error("subseq only works on sequences");
+					case NodeType::Bits: return std::make_shared<NodeBits>(binseq::subseq(reinterpret_cast<NodeBits&>(*node[0]).Value, offset, count));
+					case NodeType::String: return std::make_shared<NodeString>(vec_subseq(reinterpret_cast<NodeString&>(*node[0]).Value, offset, count));
+					case NodeType::DynamicArray: return std::make_shared<NodeArray>(vec_subseq(reinterpret_cast<NodeArray&>(*node[0]).Vector, offset, count));
+					default: throw Carbon::ExecutorRuntimeException("subseq only works on sequences");
 				}
-			} else return ex->Error("subseq needs 3 parameters, a sequence and two integers");
+			} else throw Carbon::ExecutorRuntimeException("subseq needs 3 parameters, a sequence and two integers");
 		}
 
-		static std::shared_ptr<Node> seq_repeat(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> seq_repeat(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 2) {
-				if (node[1]->GetNodeType() != NODETYPE::NODE_INTEGER) return ex->Error("second parameter of repeat must be an integer");
+				if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("second parameter of repeat must be an integer");
 				auto count = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 				switch (node[0]->GetNodeType()) {
-					case NODETYPE::NODE_BITS: return std::make_shared<NodeBits>(binseq::repeat(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
-					case NODETYPE::NODE_STRING: return std::make_shared<NodeString>(vec_repeat(reinterpret_cast<NodeString&>(*node[0]).Value, count));
-					case NODETYPE::NODE_ARRAY: return std::make_shared<NodeArray>(vec_repeat(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
-					default: return ex->Error("repeat only works on sequences");
+					case NodeType::Bits: return std::make_shared<NodeBits>(binseq::repeat(reinterpret_cast<NodeBits&>(*node[0]).Value, count));
+					case NodeType::String: return std::make_shared<NodeString>(vec_repeat(reinterpret_cast<NodeString&>(*node[0]).Value, count));
+					case NodeType::DynamicArray: return std::make_shared<NodeArray>(vec_repeat(reinterpret_cast<NodeArray&>(*node[0]).Vector, count));
+					default: throw Carbon::ExecutorRuntimeException("repeat only works on sequences");
 				}
-			} else return ex->Error("repeat needs 2 parameters, a sequence and an integer");
+			} else throw Carbon::ExecutorRuntimeException("repeat needs 2 parameters, a sequence and an integer");
 		}
 
-		static std::shared_ptr<Node> popcount(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+		static std::shared_ptr<Node> popcount(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 1) {
-				if (node[0]->GetNodeType() != NODETYPE::NODE_BITS) return ex->Error("the parameter of popcount must be binseq");
+				if (node[0]->GetNodeType() != NodeType::Bits) throw Carbon::ExecutorRuntimeException("the parameter of popcount must be binseq");
 				auto& seq = reinterpret_cast<NodeBits&>(*node[0]).Value;
 				auto count = binseq::popcount(seq);
 				return std::make_shared<NodeInteger>((long long)count);
-			} else return ex->Error("popcount only accepts one parameter");
+			} else throw Carbon::ExecutorRuntimeException("popcount only accepts one parameter");
 		}
 
 		static std::shared_ptr<Node> verbose(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() > 1) {
-				return ex->Error("verbose accepts only one or zero parameters of string which should contain the words tree, none, submit");
+				throw Carbon::ExecutorRuntimeException("verbose accepts only one or zero parameters of string which should contain the words tree, none, submit");
 			}
 			if (node.size() == 1) {
-				if (node[0]->GetNodeType() == NODETYPE::NODE_STRING) {
+				if (node[0]->GetNodeType() == NodeType::String) {
 					auto& node0 = reinterpret_cast<NodeString&>(*node[0]);
 					auto& str = node0.Value;
 					if (str.find("submit") != std::string::npos) ex->VERBOSE_SUBMIT = true;
 					if (str.find("tree") != std::string::npos) ex->VERBOSE_TREE = true;
 					if (str.find("none") != std::string::npos) ex->VERBOSE_SUBMIT = ex->VERBOSE_TREE = false;
-				} else return ex->Error("parameter is not a string");
+				} else throw Carbon::ExecutorRuntimeException("parameter is not a string");
 			}
 			std::string acc = "";
 			if (ex->VERBOSE_SUBMIT) acc += "submit";
@@ -2179,7 +1876,7 @@ namespace Carbon {
 			}
 			return std::make_shared<NodeString>(acc);
 		}
-
+		
 		static std::shared_ptr<Node> properties(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 0) {
 				auto keys = ex->SymbolTable.GlobalKeys();
@@ -2189,7 +1886,7 @@ namespace Carbon {
 				}
 				return arr;
 			} else if (node.size() == 1) {
-				if (node[0]->GetNodeType() == NODETYPE::NODE_OBJECT) {
+				if (node[0]->GetNodeType() == NodeType::DynamicObject) {
 					auto& obj = reinterpret_cast<NodeObject&>(*node[0]);
 					auto arr = std::make_shared<NodeArray>();
 					std::vector<std::string> propList;
@@ -2205,220 +1902,220 @@ namespace Carbon {
 		namespace op {
 
 
-			static std::shared_ptr<Node> not(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> not(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 1) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& v = reinterpret_cast<NodeBit&>(*node[0]);
 						return std::make_shared<NodeBit>(!v.Value);
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& v = reinterpret_cast<NodeBits&>(*node[0]);
 						return std::make_shared<NodeBits>(binseq::not(v.Value));
-					} else return ex->Error("not operator only works on binseq or bit");
-				} else return ex->Error("not operator requires 1 parameter");
+					} else throw Carbon::ExecutorRuntimeException("not operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("not operator requires 1 parameter");
 			}
 
-			static std::shared_ptr<Node> and(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> and(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>((l.Value && r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::and(l.Value, r.Value));
-					} else return ex->Error("bitwise operator only works on binseq or bit");
-				} else return ex->Error("bitwise operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> or(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> or(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>((l.Value || r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::or(l.Value, r.Value));
-					} else return ex->Error("bitwise operator only works on binseq or bit");
-				} else return ex->Error("bitwise operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> xor(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> xor(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(l.Value != r.Value);
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::xor(l.Value, r.Value));
-					} else return ex->Error("bitwise operator only works on binseq or bit");
-				} else return ex->Error("bitwise operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nand(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nand(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(!(l.Value && r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nand(l.Value, r.Value));
-					} else return ex->Error("bitwise operator only works on binseq or bit");
-				} else return ex->Error("bitwise operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nor(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nor(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(!(l.Value || r.Value));
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nor(l.Value, r.Value));
-					} else return ex->Error("bitwise operator only works on binseq or bit");
-				} else return ex->Error("bitwise operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nxor(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nxor(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BIT) {
+					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBit&>(*node[1]);
 						return std::make_shared<NodeBit>(l.Value == r.Value);
-					} else if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nxor(l.Value, r.Value));
-					} else return ex->Error("bitwise operator only works on binseq or bit");
-				} else return ex->Error("bitwise operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
+				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> andc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> andc(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::andc(l.Value, r.Value));
-					} else return ex->Error("bitwise cut operator only works on binseq");
-				} else return ex->Error("bitwise cut operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise cut operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise cut operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> orc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> orc(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::orc(l.Value, r.Value));
-					} else return ex->Error("bitwise cut operator only works on binseq");
-				} else return ex->Error("bitwise cut operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise cut operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise cut operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> xorc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> xorc(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::xorc(l.Value, r.Value));
-					} else return ex->Error("bitwise cut operator only works on binseq");
-				} else return ex->Error("bitwise cut operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise cut operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise cut operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nandc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nandc(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nandc(l.Value, r.Value));
-					} else return ex->Error("bitwise cut operator only works on binseq");
-				} else return ex->Error("bitwise cut operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise cut operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise cut operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> norc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> norc(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::norc(l.Value, r.Value));
-					} else return ex->Error("bitwise cut operator only works on binseq");
-				} else return ex->Error("bitwise cut operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise cut operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise cut operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nxorc(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nxorc(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nxorc(l.Value, r.Value));
-					} else return ex->Error("bitwise cut operator only works on binseq");
-				} else return ex->Error("bitwise cut operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise cut operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise cut operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> andr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> andr(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::andr(l.Value, r.Value));
-					} else return ex->Error("bitwise repeat operator only works on binseq");
-				} else return ex->Error("bitwise repeat operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> orr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> orr(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::orr(l.Value, r.Value));
-					} else return ex->Error("bitwise repeat operator only works on binseq");
-				} else return ex->Error("bitwise repeat operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> xorr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> xorr(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::xorr(l.Value, r.Value));
-					} else return ex->Error("bitwise repeat operator only works on binseq");
-				} else return ex->Error("bitwise repeat operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nandr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nandr(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nandr(l.Value, r.Value));
-					} else return ex->Error("bitwise repeat operator only works on binseq");
-				} else return ex->Error("bitwise repeat operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> norr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> norr(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::norr(l.Value, r.Value));
-					} else return ex->Error("bitwise repeat operator only works on binseq");
-				} else return ex->Error("bitwise repeat operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> nxorr(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> nxorr(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
-					if (node[0]->GetNodeType() == NODETYPE::NODE_BITS) {
+					if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
 						return std::make_shared<NodeBits>(binseq::nxorr(l.Value, r.Value));
-					} else return ex->Error("bitwise repeat operator only works on binseq");
-				} else return ex->Error("bitwise repeat operator requires 2 parameters");
+					} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator only works on binseq");
+				} else throw Carbon::ExecutorRuntimeException("bitwise repeat operator requires 2 parameters");
 			}
 
 		};
@@ -2429,13 +2126,13 @@ namespace Carbon {
 
 	ExecutorImp::ExecutorImp() {
 		this->ControlLevel = 0;
-		this->SymbolTable.Global("void") = std::make_shared<Node>(NODETYPE::NODE_NONE);
-		this->SymbolTable.Global("error") = std::make_shared<Node>(NODETYPE::NODE_ERROR);
+		this->SymbolTable.Global("void") = std::make_shared<Node>(NodeType::None);
+		this->SymbolTable.Global("error") = std::make_shared<Node>(NodeType::Error);
 		//system commands
 		RegisterNativeFunction("system", native::system, false);
 		RegisterNativeFunction("exit", native::exit, false);
-		RegisterNativeFunction("delete", native::del, false);
-		RegisterNativeFunction("verbose", native::verbose, false);
+		RegisterNativeFunction("delete", nullptr, false); // special
+		RegisterNativeFunction("verbose", nullptr, false); // special
 
 		//printing
 		RegisterNativeFunction("view", native::view, false);
@@ -2456,7 +2153,7 @@ namespace Carbon {
 		RegisterNativeFunction("get", native::get, true);
 		RegisterNativeFunction("set", native::set, true);
 		RegisterNativeFunction("length", native::length, true);
-		RegisterNativeFunction("properties", native::properties, false);
+		RegisterNativeFunction("properties", nullptr, false); // special
 
 		//selectors
 		RegisterNativeFunction("head", native::sel_head, true);
@@ -2504,14 +2201,30 @@ namespace Carbon {
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteCall(NodeCommand& node) {
 		auto fname = reinterpret_cast<NodeAtom*>(&*node.Children[0])->AtomText;
 		auto nodeptr = SymbolTable[fname];
-		if (nodeptr != nullptr && nodeptr->GetNodeType() == NODETYPE::NODE_FUNCTION) {
+		if (nodeptr != nullptr && nodeptr->GetNodeType() == NodeType::Function) {
 			auto function = reinterpret_cast<NodeFunction*>(&*nodeptr);
 			std::vector<std::shared_ptr<Node>> paramlist;
 			for (auto i = ++node.Children.begin(); i != node.Children.end(); i++) {
 				paramlist.push_back(ExecuteStatement(*i));
 			}
 			if (function->Native) {
-				return function->nativeptr(this, paramlist);
+				if (function->nativeptr == nullptr)
+				{
+					// special hack
+					if (fname == "delete")
+					{
+						return native::del(this, paramlist);
+					}
+					else if (fname == "verbose")
+					{
+						return native::verbose(this, paramlist);
+					}
+					else if (fname == "properties")
+					{
+						return native::properties(this, paramlist);
+					}
+				}
+				return function->nativeptr(paramlist);
 			} else {
 				SymbolTable.Push();
 				unsigned limit = function->ParameterList.size();
@@ -2520,12 +2233,13 @@ namespace Carbon {
 					SymbolTable.Local(function->ParameterList[i]) = paramlist[i];
 				auto result = ExecuteStatement(function->Implementation);
 				SymbolTable.Pop();
-				while (result->GetNodeType() == NODETYPE::NODE_RETURN) {
+				while (result->GetNodeType() == NodeType::Return) {
 					result = reinterpret_cast<NodeReturn&>(*result).Value;
 				}
 				return result;
 			}
-		} else return Error(fname + " is not a function");
+		}
+		else throw ExecutorRuntimeException(fname + " is not a function");
 	}
 
 }

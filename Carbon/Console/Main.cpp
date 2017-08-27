@@ -90,6 +90,7 @@ int main(int argc, char** argv, char** env) {
 		while (true) {
 			executor.SetInteractiveMode(true);
 			executor.ClearStatement();
+			bool recoverFromError = false;
 			try
 			{
 				CompileStdin(executor);
@@ -97,7 +98,20 @@ int main(int argc, char** argv, char** env) {
 			catch(Carbon::ParserException exception)
 			{
 				std::cerr << "Parser Error: " << exception.GetMessageWithLineAndPosition() << "\n";
+				recoverFromError = true;
+			}
+			catch (Carbon::ExecutorExeption exception)
+			{
+				std::cerr << "Runtime Error: " << exception.GetMessage() << "\n";
+				recoverFromError = true;
+			}
+			// error recovery
+			if (recoverFromError)
+			{
+				// clear cin until end of line
 				std::cin.ignore(10000, '\n');
+				// clear statement in executor
+				executor.ClearStatement();
 			}
 		}
 }

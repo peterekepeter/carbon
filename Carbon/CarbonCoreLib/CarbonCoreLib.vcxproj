@@ -91,9 +91,12 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AstNodes.h" />
     <ClInclude Include="Executor.h" />
+    <ClInclude Include="ExecutorException.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AstNodes.cpp" />
     <ClCompile Include="Executor.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
