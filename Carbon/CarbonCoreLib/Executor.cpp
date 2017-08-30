@@ -11,6 +11,8 @@
 #include "../BinseqLib/binseq.hpp"
 #include "AstNodes.h"
 #include "ExecutorException.h"
+#include <chrono>
+#include <sstream>
 
 #pragma warning(disable:4482)
 
@@ -43,6 +45,7 @@ namespace Carbon {
 		int ControlLevel;
 		bool VERBOSE_SUBMIT;
 		bool VERBOSE_TREE;
+		bool VERBOSE_PERFORMANCE;
 		bool ShowPrompt;
 		SymbolTableStack SymbolTable;
 		std::stack<std::shared_ptr<Node>> stack;
@@ -72,6 +75,7 @@ namespace Carbon {
 		this->SetInteractiveMode(false);
 		this->imp->VERBOSE_SUBMIT = false;
 		this->imp->VERBOSE_TREE = false;
+		this->imp->VERBOSE_PERFORMANCE = true;
 	}
 
 	Executor::~Executor() {
@@ -474,8 +478,27 @@ namespace Carbon {
 					while (!imp->stack.empty()) imp->stack.pop();
 					if (imp->ShowPrompt) {
 						//if console mode, execute
-						std::vector<std::shared_ptr<Node>> args; 
-						args.push_back(imp->ExecuteStatementList());
+						std::vector<std::shared_ptr<Node>> args;
+
+						std::chrono::steady_clock::time_point t1;
+						// if we need to know perf, we need to know time before starting execution
+						if (imp->VERBOSE_PERFORMANCE == true) t1 = std::chrono::high_resolution_clock::now(); 
+						// execute recorded statements
+						auto result = imp->ExecuteStatementList();
+						args.push_back(result);
+						args.push_back(std::make_shared<NodeString>(std::string(":") + GetTypeText(result->GetNodeType())));
+						if (imp->VERBOSE_PERFORMANCE == true)
+						{
+							// if perf is enabled, check time now and print delta
+							std::chrono::steady_clock::time_point t2 = std::chrono::high_resolution_clock::now();
+							auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count(); 
+							double ms = ns / 1.0e6;
+							std::ostringstream strs;
+							strs << "(" << ms << "ms" << ")";
+							std::string str = strs.str();
+							args.push_back(std::make_shared<NodeString>(strs.str()));
+						}
+						
 						native::view(args);
 						imp->ClearStatementList();
 						printf(">> ");
@@ -1341,6 +1364,31 @@ namespace Carbon {
 			return std::make_shared<NodeInteger>(result);
 		}
 
+		static std::shared_ptr<Node> clock(std::vector<std::shared_ptr<Node>>& node) {
+			long long result = 0;
+			auto timepoint = std::chrono::high_resolution_clock::now();
+			auto epoch = timepoint.time_since_epoch();
+			// check parameter
+			if (node.size() >= 1) {
+				if (node[0]->GetNodeType() == NodeType::String) {
+					auto str = reinterpret_cast<NodeString&>(*node[0]).Value;
+					if		(str == "ns" || str == "nanoseconds")	result = std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+					else if (str == "us" || str == "microseconds")	result = std::chrono::duration_cast<std::chrono::microseconds>(epoch).count();
+					else if (str == "ms" || str == "milliseconds")	result = std::chrono::duration_cast<std::chrono::milliseconds>(epoch).count();
+					else if (str == "s" || str == "seconds")	result = std::chrono::duration_cast<std::chrono::seconds>(epoch).count();
+					else if (str == "m" || str == "minutes")	result = std::chrono::duration_cast<std::chrono::minutes>(epoch).count();
+					else if (str == "h" || str == "hours")	result = std::chrono::duration_cast<std::chrono::hours>(epoch).count();
+					else throw Carbon::ExecutorRuntimeException("invalid time unit, accepted values are nanoseconds, ns, microseconds, us, milliseconds, ms, seconds, s, minutes, m, hours, h");
+				}
+			} 
+			else
+			{  
+				// if no parameter return nanoseconds
+				result = std::chrono::duration_cast<std::chrono::nanoseconds>(epoch).count();
+			}
+			return std::make_shared<NodeInteger>(result);
+		}
+
 		static std::shared_ptr<Node> exit(std::vector<std::shared_ptr<Node>>& node) {
 			if (node.size() == 1) {
 				if (node[0]->GetNodeType() == NodeType::Integer) {
@@ -1863,7 +1911,8 @@ namespace Carbon {
 					auto& str = node0.Value;
 					if (str.find("submit") != std::string::npos) ex->VERBOSE_SUBMIT = true;
 					if (str.find("tree") != std::string::npos) ex->VERBOSE_TREE = true;
-					if (str.find("none") != std::string::npos) ex->VERBOSE_SUBMIT = ex->VERBOSE_TREE = false;
+					if (str.find("performance") != std::string::npos) ex->VERBOSE_PERFORMANCE = true;
+					if (str.find("none") != std::string::npos) ex->VERBOSE_SUBMIT = ex->VERBOSE_TREE = ex->VERBOSE_PERFORMANCE = false;
 				} else throw Carbon::ExecutorRuntimeException("parameter is not a string");
 			}
 			std::string acc = "";
@@ -2133,6 +2182,9 @@ namespace Carbon {
 		RegisterNativeFunction("exit", native::exit, false);
 		RegisterNativeFunction("delete", nullptr, false); // special
 		RegisterNativeFunction("verbose", nullptr, false); // special
+
+		//time
+		RegisterNativeFunction("clock", native::clock, false);
 
 		//printing
 		RegisterNativeFunction("view", native::view, false);
