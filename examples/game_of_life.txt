@@ -21,8 +21,8 @@ chars = array(9);
 loop(y = 12, y<inner_y-12, y=y+1){
 	loop(x=24, x<inner_x-24, x=x+1){
 		set(map,x+(y+1)*outer_x+1,random());
-	}
-}
+	};
+};
 
 loop{
 	loop(y=0, y<inner_y, y=y+1){
@@ -59,7 +59,7 @@ loop{
 					set(map,line_offs+x,bit(1));
 					set(buffer,x,35);
 				}
-			}
+			;;}
 			else
 			{
 				count = count + integer(get(map,t0+1));
@@ -80,14 +80,14 @@ loop{
 					set(buffer,x,43);
 				} else { 
 					set(buffer,x,32);
-				}
-			}
+				};;
+			};
 		}
 		set(screen,y,head(buffer,length(buffer)));
 	}
 	system("cls");
 	loop(i=0, i<length(screen), i=i+1){
 		view(get(screen,i));
-	}
+	};
 	
 }
