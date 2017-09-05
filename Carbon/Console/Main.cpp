@@ -5,6 +5,7 @@
 #include "../CarbonCompilerLib/Compiler.h"
 #include "../CarbonCompilerLib/Parser.h"
 #include <iostream>
+#include <fstream>
 
 
 std::string prepareString(const char* str) {
@@ -82,8 +83,28 @@ int main(int argc, char** argv, char** env) {
 
 	if (argc > 1) {
 		for (int i = 1; i < argc; i++) {
-			CompileFile(argv[i], executor);
-			executor.Execute();
+			const char* filename = argv[i];
+			std::ifstream file(filename);
+			// check file
+			if (file.is_open() == false)
+			{
+				std::cerr << "Failed to open file: " << filename << '\n';
+				break;
+			}
+			// compile and run
+			try
+			{
+				CompileStream(file, executor);
+				executor.Execute();
+			}
+			catch (Carbon::ParserException exception)
+			{
+				std::cerr << "Parser Error: " << exception.GetMessageWithLineAndPosition() << "\n";
+			}
+			catch (Carbon::ExecutorExeption exception)
+			{
+				std::cerr << "Runtime Error: " << exception.GetMessage() << "\n";
+			}
 		}
 	}
 	else

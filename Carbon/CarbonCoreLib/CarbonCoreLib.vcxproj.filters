@@ -27,12 +27,18 @@
     <ClInclude Include="ExecutorException.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Threading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Executor.cpp">
+    <ClCompile Include="AstNodes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AstNodes.cpp">
+    <ClCompile Include="Threading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Executor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

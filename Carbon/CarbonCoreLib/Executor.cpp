@@ -13,11 +13,34 @@
 #include "ExecutorException.h"
 #include <chrono>
 #include <sstream>
+#include "Threading.h"
 
 #pragma warning(disable:4482)
 
 namespace Carbon {
-	
+
+	/**
+	 * \brief 
+	 * Pointer to thread pool instance.
+	 */
+	static ThreadPool* threadPool;
+	/**
+	 * \brief 
+	 * Performs lazy initialization for thread pool.
+	 * \return 
+	 * Returns pointer to thread pool instance.
+	 */
+	static ThreadPool* GetThreadPool()
+	{
+		if (threadPool == nullptr)
+		{
+			return threadPool = new ThreadPool;
+		} 
+		else
+		{
+			return threadPool;
+		}
+	}
 
 	namespace native
 	{
@@ -50,6 +73,7 @@ namespace Carbon {
 		SymbolTableStack SymbolTable;
 		std::stack<std::shared_ptr<Node>> stack;
 		std::vector<std::shared_ptr<Node>> StatementList;
+		ThreadPool* threadPool;
 		std::shared_ptr<Node> ReplaceIdIfPossible(std::shared_ptr<Node>);
 		std::shared_ptr<Node> OptimizeIfPossible(std::shared_ptr<Node>);
 		void RegisterNativeFunction(const char* name, native_function_ptr, bool pure);
@@ -1364,6 +1388,37 @@ namespace Carbon {
 			return std::make_shared<NodeInteger>(result);
 		}
 
+		static std::shared_ptr<Node> parallel(std::vector<std::shared_ptr<Node>>& node)
+		{
+			throw Carbon::ExecutorRuntimeException("unfortunately parallel is not fully implemented");
+			// get hanle to thread pool
+			auto& threadPool = *(GetThreadPool());
+			// required parameter
+			if (node.size()<1) throw Carbon::ExecutorRuntimeException("parallel needs at least one parameter");
+			auto& functionParam = *(node[0]); 
+			// optional parameters
+			Node* argumentParam = nullptr;
+			Node* degreeOfParallelismParam = nullptr;
+			if (node.size() >= 2) argumentParam = &*node[1];
+			if (node.size() >= 3) degreeOfParallelismParam = &*node[2];
+			// check if more parameters
+			if (node.size()>3) throw Carbon::ExecutorRuntimeException("parallel does not accept more than 3 paramters");
+			// execution vastly depends on the type of first paramter
+			switch (functionParam.GetNodeType())
+			{
+			case NodeType::Function:
+				
+				break;
+			case NodeType::DynamicArray:
+				break;
+			case NodeType::DynamicObject:
+				break;
+			default:
+				throw Carbon::ExecutorRuntimeException("first parameter should be a function or container of functions");
+				break;
+			}
+		}
+
 		static std::shared_ptr<Node> clock(std::vector<std::shared_ptr<Node>>& node) {
 			long long result = 0;
 			auto timepoint = std::chrono::high_resolution_clock::now();
@@ -2182,6 +2237,10 @@ namespace Carbon {
 		RegisterNativeFunction("exit", native::exit, false);
 		RegisterNativeFunction("delete", nullptr, false); // special
 		RegisterNativeFunction("verbose", nullptr, false); // special
+
+		// paralellization
+		RegisterNativeFunction("parallel", native::parallel, false);
+		
 
 		//time
 		RegisterNativeFunction("clock", native::clock, false);
