@@ -77,6 +77,7 @@ namespace Carbon {
 		std::shared_ptr<Node> ReplaceIdIfPossible(std::shared_ptr<Node>);
 		std::shared_ptr<Node> OptimizeIfPossible(std::shared_ptr<Node>);
 		void RegisterNativeFunction(const char* name, native_function_ptr, bool pure);
+		void RegisterInternalNativeFunction(const char* name, std::shared_ptr<Node> (*fptr)(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node), bool pure);
 		ExecutorImp::ExecutorImp();
 		std::shared_ptr<Node> ExecuteStatement(std::shared_ptr<Node>);
 		std::shared_ptr<Node> ExecuteStatementList();
@@ -719,10 +720,10 @@ namespace Carbon {
 	}
 
 	NodeFunction::NodeFunction(native_function_ptr fptr, bool pure)
-		: Node(NodeType::Function), Native(true), nativeptr(fptr), Pure(pure) { }
+		: Node(NodeType::Function), Native(true), nativeptr(fptr), Pure(pure), InternalNative(false) { }
 
 	NodeFunction::NodeFunction(std::vector<std::string> parameterList, std::shared_ptr<Node> impl)
-		:Node(NodeType::Function), Native(false), nativeptr(nullptr), ParameterList(parameterList), Implementation(impl) {}
+		:Node(NodeType::Function), Native(false), nativeptr(nullptr), ParameterList(parameterList), Implementation(impl), InternalNative(false), Pure(false) {}
 
 	const char* NodeFunction::GetText() {
 		if (Native) return "native function";
@@ -739,8 +740,20 @@ namespace Carbon {
 
 	NodeFloat::NodeFloat(double value) : Node(NodeType::Float), Value(value), text(nullptr) { }
 
+
+	// a native function receives a vector of nodes and retursn another node
+	typedef std::shared_ptr<Node>(*internal_native_function_ptr)(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node);
+
 	void ExecutorImp::RegisterNativeFunction(const char* name, native_function_ptr fptr, bool pure) {
 		auto newfunction = std::make_shared<NodeFunction>(fptr, pure);
+		newfunction->InternalNative = false;
+		auto& symbol = SymbolTable.Global(name);
+		symbol = newfunction;
+	}
+
+	void ExecutorImp::RegisterInternalNativeFunction(const char* name, internal_native_function_ptr fptr, bool pure) {
+		auto newfunction = std::make_shared<NodeFunction>(reinterpret_cast<native_function_ptr>(fptr), pure);
+		newfunction->InternalNative = true;
 		auto& symbol = SymbolTable.Global(name);
 		symbol = newfunction;
 	}
@@ -1388,9 +1401,9 @@ namespace Carbon {
 			return std::make_shared<NodeInteger>(result);
 		}
 
-		static std::shared_ptr<Node> parallel(std::vector<std::shared_ptr<Node>>& node)
+		static std::shared_ptr<Node> parallel(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node)
 		{
-			throw Carbon::ExecutorRuntimeException("unfortunately parallel is not fully implemented");
+			//throw Carbon::ExecutorRuntimeException("unfortunately parallel is not fully implemented");
 			// get hanle to thread pool
 			auto& threadPool = *(GetThreadPool());
 			// required parameter
@@ -1401,13 +1414,80 @@ namespace Carbon {
 			Node* degreeOfParallelismParam = nullptr;
 			if (node.size() >= 2) argumentParam = &*node[1];
 			if (node.size() >= 3) degreeOfParallelismParam = &*node[2];
+			int degreeOfParallelism = 0;
+			if (degreeOfParallelismParam!=nullptr && degreeOfParallelismParam->GetNodeType() == NodeType::Integer)
+			{
+				degreeOfParallelism = reinterpret_cast<NodeInteger*>(degreeOfParallelismParam)->Value;
+			}
+
 			// check if more parameters
 			if (node.size()>3) throw Carbon::ExecutorRuntimeException("parallel does not accept more than 3 paramters");
 			// execution vastly depends on the type of first paramter
 			switch (functionParam.GetNodeType())
 			{
 			case NodeType::Function:
-				
+				if (argumentParam == nullptr)
+				{
+					NodeCommand cmd(InstructionType::CALL);
+					cmd.Children.push_back(node[0]);
+					return ex->ExecuteCall(cmd);
+				}
+				else if (argumentParam->GetNodeType() == NodeType::DynamicArray)
+				{
+					auto& vec = reinterpret_cast<NodeArray*>(argumentParam)->Vector;
+					auto results = std::make_shared<NodeArray>(vec.size());
+					auto& rvec = results->Vector;
+					std::vector<std::function<void(void)>> tasks(vec.size());
+					for (int i=0; i<vec.size(); i++)
+					{
+						tasks[i] = [i, &rvec, &node, &vec, ex]()
+						{
+							NodeCommand cmd(InstructionType::CALL);
+							cmd.Children.push_back(node[0]);
+							cmd.Children.push_back(vec[i]);
+							rvec[i] = ex->ExecuteCall(cmd);
+						};
+					}
+					auto task = threadPool.SubmitForExecution(tasks, degreeOfParallelism);
+					task->WaitUntilDone();
+					return results;
+				}
+				else if (argumentParam->GetNodeType() == NodeType::DynamicObject)
+				{
+					auto& map = reinterpret_cast<NodeObject*>(argumentParam)->Map;
+					auto results = std::make_shared<NodeObject>();
+					auto& rmap = results->Map;
+					std::vector<std::function<void(void)>> tasks(map.size());
+					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(map.size());
+					int i = 0;
+					for (auto mapItem : map)
+					{
+						resultsVector[i].first = mapItem.first;
+						auto param = mapItem.second;
+						tasks[i] = [i, &resultsVector, &node, param, ex]()
+						{
+							NodeCommand cmd(InstructionType::CALL);
+							cmd.Children.push_back(node[0]);
+							cmd.Children.push_back(param);
+							resultsVector[i].second = ex->ExecuteCall(cmd);
+						};
+						i++;
+					}
+					auto task = threadPool.SubmitForExecution(tasks, degreeOfParallelism);
+					task->WaitUntilDone();
+					for (auto& element : resultsVector)
+					{
+						rmap.insert_or_assign(element.first, element.second);
+					}
+					return results;
+				}
+				else
+				{
+					NodeCommand cmd(InstructionType::CALL);
+					cmd.Children.push_back(node[0]);
+					cmd.Children.push_back(node[1]);
+					return ex->ExecuteCall(cmd);
+				}
 				break;
 			case NodeType::DynamicArray:
 				break;
@@ -2235,11 +2315,11 @@ namespace Carbon {
 		//system commands
 		RegisterNativeFunction("system", native::system, false);
 		RegisterNativeFunction("exit", native::exit, false);
-		RegisterNativeFunction("delete", nullptr, false); // special
-		RegisterNativeFunction("verbose", nullptr, false); // special
+		RegisterInternalNativeFunction("delete", native::del, false);
+		RegisterInternalNativeFunction("verbose", native::verbose, false);
 
 		// paralellization
-		RegisterNativeFunction("parallel", native::parallel, false);
+		RegisterInternalNativeFunction("parallel", native::parallel, false);
 		
 
 		//time
@@ -2264,7 +2344,7 @@ namespace Carbon {
 		RegisterNativeFunction("get", native::get, true);
 		RegisterNativeFunction("set", native::set, true);
 		RegisterNativeFunction("length", native::length, true);
-		RegisterNativeFunction("properties", nullptr, false); // special
+		RegisterInternalNativeFunction("properties", native::properties, false);
 
 		//selectors
 		RegisterNativeFunction("head", native::sel_head, true);
@@ -2310,32 +2390,38 @@ namespace Carbon {
 	/* function call dispatch */
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteCall(NodeCommand& node) {
-		auto fname = reinterpret_cast<NodeAtom*>(&*node.Children[0])->AtomText;
-		auto nodeptr = SymbolTable[fname];
-		if (nodeptr != nullptr && nodeptr->GetNodeType() == NodeType::Function) {
-			auto function = reinterpret_cast<NodeFunction*>(&*nodeptr);
+		// function node
+		NodeFunction* function = nullptr;
+		auto fnnodeptr = node.Children[0];
+		if (fnnodeptr->GetNodeType() == NodeType::Atom)
+		{
+			// we ereceived function name, perform lookup
+			auto fname = reinterpret_cast<NodeAtom*>(&*node.Children[0])->AtomText;
+			std::shared_ptr<Node> nodeptr = SymbolTable[fname];
+			if (nodeptr != nullptr && nodeptr->GetNodeType() == NodeType::Function) {
+				function = reinterpret_cast<NodeFunction*>(&*nodeptr);
+			}
+			else throw ExecutorRuntimeException(fname + " is not a function");
+		}
+		else if(fnnodeptr->GetNodeType() == NodeType::Function)
+		{
+			// we received function directly
+			function = reinterpret_cast<NodeFunction*>(&*fnnodeptr);
+		}
+		if (function != nullptr) {
 			std::vector<std::shared_ptr<Node>> paramlist;
-			for (auto i = ++node.Children.begin(); i != node.Children.end(); i++) {
+			for (auto i = ++node.Children.begin(); i != node.Children.end(); ++i) {
 				paramlist.push_back(ExecuteStatement(*i));
 			}
 			if (function->Native) {
-				if (function->nativeptr == nullptr)
+				if (function->InternalNative)
 				{
-					// special hack
-					if (fname == "delete")
-					{
-						return native::del(this, paramlist);
-					}
-					else if (fname == "verbose")
-					{
-						return native::verbose(this, paramlist);
-					}
-					else if (fname == "properties")
-					{
-						return native::properties(this, paramlist);
-					}
+					return reinterpret_cast<internal_native_function_ptr>(function->nativeptr)(this, paramlist);
 				}
-				return function->nativeptr(paramlist);
+				else
+				{
+					return function->nativeptr(paramlist);
+				}
 			} else {
 				SymbolTable.Push();
 				unsigned limit = function->ParameterList.size();
@@ -2350,7 +2436,7 @@ namespace Carbon {
 				return result;
 			}
 		}
-		else throw ExecutorRuntimeException(fname + " is not a function");
+		else throw ExecutorRuntimeException("parameter is not a function");
 	}
 
 }

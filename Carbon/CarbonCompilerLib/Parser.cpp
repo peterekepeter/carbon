@@ -551,7 +551,10 @@ bool Carbon::Parser::ParseCallList()
 			return true; // continue parsing
 		}
 		throw ParseError("Unexpected parser state.");
-	
+
+	case Token::BracesOpen:
+	case Token::BracketOpen:
+	case Token::ParanthesisOpen:
 	case Token::Id:
 	case Token::String:
 	case Token::StringBinary:

@@ -49,6 +49,8 @@ namespace Carbon
 		case NodeType::Error: return "error";
 		case NodeType::None: return "void";
 		case NodeType::String: return "string";
+		case NodeType::DynamicArray: return "array";
+		case NodeType::DynamicObject: return "object";
 		default: throw ExecutorImplementationException("Unhandled nodetype.");
 		}
 	}

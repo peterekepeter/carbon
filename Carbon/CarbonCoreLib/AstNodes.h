@@ -75,6 +75,7 @@ namespace Carbon
 		NodeFunction(native_function_ptr nativeptr, bool pure);
 		NodeFunction(std::vector<std::string> parameterList, std::shared_ptr<Node> impl);
 		native_function_ptr nativeptr;
+		bool InternalNative;
 		std::vector<std::string> ParameterList;
 		std::shared_ptr<Node> Implementation;
 		virtual const char* GetText() override;
