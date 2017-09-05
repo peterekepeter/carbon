@@ -1490,8 +1490,108 @@ namespace Carbon {
 				}
 				break;
 			case NodeType::DynamicArray:
+				if (argumentParam == nullptr)
+				{
+					auto& fnVec = reinterpret_cast<NodeArray&>(functionParam).Vector;
+					std::vector<std::function<void(void)>> tasks(fnVec.size());
+					auto results = std::make_shared<NodeArray>(fnVec.size());
+					auto& rvec = results->Vector;
+					int i = 0;
+					for (auto function:fnVec)
+					{
+						tasks[i] = [function, i, &rvec, &node, ex]()
+						{
+							NodeCommand cmd(InstructionType::CALL);
+							cmd.Children.push_back(function);
+							rvec[i] = ex->ExecuteCall(cmd);
+						};
+						i++;
+					}
+					auto task = threadPool.SubmitForExecution(tasks, degreeOfParallelism);
+					task->WaitUntilDone();
+					return results;
+				}
+				else
+				{
+					auto& fnVec = reinterpret_cast<NodeArray&>(functionParam).Vector;
+					std::vector<std::function<void(void)>> tasks(fnVec.size());
+					auto results = std::make_shared<NodeArray>(fnVec.size());
+					auto& rvec = results->Vector;
+					int i = 0;
+					for (auto function : fnVec)
+					{
+						tasks[i] = [function, i, &rvec, &node, ex]()
+						{
+							NodeCommand cmd(InstructionType::CALL);
+							cmd.Children.push_back(function);
+							cmd.Children.push_back(node[1]);
+							rvec[i] = ex->ExecuteCall(cmd);
+						};
+						i++;
+					}
+					auto task = threadPool.SubmitForExecution(tasks, degreeOfParallelism);
+					task->WaitUntilDone();
+					return results;
+				}
 				break;
 			case NodeType::DynamicObject:
+				if (argumentParam == nullptr)
+				{
+					auto& fnMap = reinterpret_cast<NodeObject&>(functionParam).Map;
+					std::vector<std::function<void(void)>> tasks(fnMap.size());
+					auto results = std::make_shared<NodeObject>();
+					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(fnMap.size());
+					auto& rmap = results->Map;
+					int i = 0;
+					for (auto function : fnMap)
+					{
+						resultsVector[i].first = function.first;
+						auto param = function.second;
+						tasks[i] = [param, i, &resultsVector, &node, ex]()
+						{
+							NodeCommand cmd(InstructionType::CALL);
+							cmd.Children.push_back(param);
+							resultsVector[i].second = ex->ExecuteCall(cmd);
+						};
+						i++;
+					}
+					auto task = threadPool.SubmitForExecution(tasks, degreeOfParallelism);
+					task->WaitUntilDone();
+					for (auto& element : resultsVector)
+					{
+						rmap.insert_or_assign(element.first, element.second);
+					}
+					return results;
+				}
+				else
+				{
+					auto& fnMap = reinterpret_cast<NodeObject&>(functionParam).Map;
+					std::vector<std::function<void(void)>> tasks(fnMap.size());
+					auto results = std::make_shared<NodeObject>();
+					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(fnMap.size());
+					auto& rmap = results->Map;
+					int i = 0;
+					for (auto function : fnMap)
+					{
+						resultsVector[i].first = function.first;
+						auto param = function.second;
+						tasks[i] = [param, i, &resultsVector, &node, ex]()
+						{
+							NodeCommand cmd(InstructionType::CALL);
+							cmd.Children.push_back(param);
+							cmd.Children.push_back(node[1]);
+							resultsVector[i].second = ex->ExecuteCall(cmd);
+						};
+						i++;
+					}
+					auto task = threadPool.SubmitForExecution(tasks, degreeOfParallelism);
+					task->WaitUntilDone();
+					for (auto& element : resultsVector)
+					{
+						rmap.insert_or_assign(element.first, element.second);
+					}
+					return results;
+				}
 				break;
 			default:
 				throw Carbon::ExecutorRuntimeException("first parameter should be a function or container of functions");
