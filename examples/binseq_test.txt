@@ -11,22 +11,5 @@ view(a,"nand",b,"is",nand(a,b));
 view(a," nor",b,"is",nor(a,b));
 view(a,"nxor",b,"is",nxor(a,b));
 
-view("\nbitwise cut operations\n");
-
-view(c," andc",b,"is",andc(c,b));
-view(c,"  orc",b,"is",orc(c,b));
-view(c," xorc",b,"is",xorc(c,b));
-view(c,"nandc",b,"is",nandc(c,b));
-view(c," norc",b,"is",norc(c,b));
-view(c,"nxorc",b,"is",nxorc(c,b));
-
-view("\nbitwise repeat operations\n");
-
-view(c," andr",b,"is",andr(c,b));
-view(c,"  orr",b,"is",orr(c,b));
-view(c," xorr",b,"is",xorr(c,b));
-view(c,"nandr",b,"is",nandr(c,b));
-view(c," norr",b,"is",norr(c,b));
-view(c,"nxorr",b,"is",nxorr(c,b));
 
 system("pause");

@@ -1,0 +1,43 @@
+
+_rand_seed = 0;
+random = function(){
+	_rand_seed = _rand_seed*_rand_seed*31245147
+		+_rand_seed*5161231+194124391;
+	local x = 0;
+	x = _rand_seed-_rand_seed/65536*65536;
+	if (x<0) x = -x;
+	return x<32768;
+};
+
+data=repeat(b"00000000",1024*1024);
+
+loop(i=0,i<length(data),i=i+1)
+{
+	set(data,i,random());
+}
+
+testsToRun = [
+	nistSerial, 
+	nistUniversal, 
+	nistRank, 
+	nistApproximateEntropy, 
+	nistRandomExcursion, 
+	nistRandomExcursionVariant,
+	nistFrequency, 
+	nistRuns
+];
+
+view("running",length(testsToRun)
+	,"tests with a binary sequence of"
+	,length(data),"bits");
+
+loop (threads=1, threads<=8, threads=threads+1)
+{
+	timeunit="ns";
+	results=parallel(testsToRun, data, threads);
+	t0=clock(timeunit);
+	results=parallel(testsToRun, data, threads);
+	t1=clock(timeunit);
+	view("testing with",threads
+		,"thread(s)",t1-t0,timeunit);
+}

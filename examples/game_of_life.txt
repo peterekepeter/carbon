@@ -1,5 +1,4 @@
-
-_rand_seed = 1;
+_rand_seed = 3;
 random = function(){
 	_rand_seed = _rand_seed*_rand_seed*31245147+_rand_seed*5161231+194124391;
 	local x = 0;
@@ -16,15 +15,17 @@ map = repeat(b"0", outer_x*outer_y);
 buffer = " "*inner_x;
 screen = array(inner_y);
 chars = array(9);
-
+iteration=0;
 
 loop(y = 12, y<inner_y-12, y=y+1){
-	loop(x=24, x<inner_x-24, x=x+1){
+	loop(x=28, x<inner_x-28, x=x+1){
 		set(map,x+(y+1)*outer_x+1,random());
 	};
 };
 
 loop{
+	view("iteration",iteration);
+	iteration=iteration+1;
 	loop(y=0, y<inner_y, y=y+1){
 		local line_offs = 0;
 		line_offs = outer_x*(y+1)+1;
@@ -51,10 +52,10 @@ loop{
 				
 				if(count<3){
 					set(map,line_offs+x,bit(0));
-					set(buffer,x,46);
+					set(buffer,x,32);
 				} else if (count>4)	{
 					set(map,line_offs+x,bit(0));
-					set(buffer,x,46);
+					set(buffer,x,32);
 				} else {
 					set(map,line_offs+x,bit(1));
 					set(buffer,x,35);
@@ -77,7 +78,7 @@ loop{
 				
 				if (count ==3){
 					set(map,line_offs+x,bit(1));
-					set(buffer,x,43);
+					set(buffer,x,35);
 				} else { 
 					set(buffer,x,32);
 				};;
@@ -85,9 +86,9 @@ loop{
 		}
 		set(screen,y,head(buffer,length(buffer)));
 	}
-	system("cls");
-	loop(i=0, i<length(screen), i=i+1){
-		view(get(screen,i));
+	
+	loop(i=10, i<length(screen)-12, i=i+1){
+		view(tail(get(screen,i),40));
 	};
 	
 }
