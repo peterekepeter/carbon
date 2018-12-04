@@ -1052,9 +1052,18 @@ namespace Carbon {
 					} else throw ExecutorRuntimeException("error in expression");
 
 				}
-
+				case NodeType::None: {
+					if (executed.size() != 2) {
+						throw ExecutorRuntimeException("expression with void are only valid with 2 operands");
+					}
+					switch (node.CommandType) {
+						case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(executed[1]->GetNodeType() == NodeType::None);
+						case InstructionType::COMP_NE: return std::make_shared<NodeBit>(executed[1]->GetNodeType() != NodeType::None);
+						default: throw ExecutorRuntimeException("cannot perform requested operation on void type");
+					}
+				}
 				default:
-					throw ExecutorRuntimeException(std::string("arithmetic operators only works don't work on ") + (GetTypeText(executed[0]->GetNodeType())));
+					throw ExecutorRuntimeException(std::string("arithmetic operators not implemented for ") + (GetTypeText(executed[0]->GetNodeType())));
 			}
 		} else throw ExecutorImplementationException("arithmetic operators need to have at least 2 arguments");
 
