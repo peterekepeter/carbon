@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "CppUnitTest.h"
 #include "../CarbonCompilerLib/Lexer.h"
 #include "../CarbonCompilerLib/Parser.h"
 
@@ -433,6 +432,32 @@ namespace UnitTestCarbonCompilerLib
 		}
 		TEST_METHOD(ParserLoop3)
 		{
+			Parse("loop(y = 12, y<inner_y-12, y=y+1){}")
+				.Expect(InstructionType::CONTROL)
+				// first expr
+				.Expect(InstructionType::ID)	.WithData("y")
+				.Expect(InstructionType::NUM)	.WithData("12")
+				.Expect(InstructionType::ASSIGN)
+				// second expr
+				.Expect(InstructionType::ID)	.WithData("y")
+				.Expect(InstructionType::ID)	.WithData("inner_y")
+				.Expect(InstructionType::NUM)	.WithData("12")
+				.Expect(InstructionType::SUBTRACT)
+				.Expect(InstructionType::COMP_LT)
+				// third expr
+				.Expect(InstructionType::ID)	.WithData("y")
+				.Expect(InstructionType::ID)	.WithData("x")
+				.Expect(InstructionType::NUM)	.WithData("1")
+				.Expect(InstructionType::ADD)
+				.Expect(InstructionType::ASSIGN)
+				// statement
+				.Expect(InstructionType::BLOCKBEGIN)
+				.Expect(InstructionType::BLOCKEND)
+				.Expect(InstructionType::LOOP3)
+				.Expect(InstructionType::END_STATEMENT)
+				.EndOfFile();
+				;
+
 			ss input("loop(y = 12, y<inner_y-12, y=y+1){}");  Lexer lexer(input); Parser parser(lexer);
 			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
 			// first expr
@@ -458,6 +483,46 @@ namespace UnitTestCarbonCompilerLib
 			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
 			Assert::IsFalse(parser.MoveNext());
 		}
+
+	private:
+		class Parse
+		{
+			// refactor regex
+			
+			// Assert::IsTrue\(parser.MoveNext\(\)\);\s+Assert::IsTrue\(parser.ReadInstructionType\(\)\s+==\s+(InstructionType::\w+)\s*\);
+			// Assert::AreEqual\(parser.ReadStringData\(\),\s*("[^"]*")\);
+			// Assert::IsFalse\(parser.MoveNext\(\)\);
+
+			ss stream;
+			Lexer lexer;
+			Parser parser;
+
+		public:
+			Parse(const char* input) : stream(input), lexer(stream), parser(lexer) { }
+
+			Parse(const Parse& other) = delete;
+			Parse(Parse&& other) = delete;
+			Parse& operator = (const Parse& other) = delete;
+			Parse& operator = (Parse&& other) = delete;
+
+			Parse& EndOfFile() {
+				Assert::IsFalse(parser.MoveNext(), L"File should be ending.");
+				return *this;
+			}
+
+			// helper for testing parser result
+			Parse& Expect(InstructionType type){
+				Assert::IsTrue(parser.MoveNext(), L"Expecting there to be more instructions.");
+				Assert::IsTrue(type == parser.ReadInstructionType(), L"Expecting instruction to be the expected type.");
+				return *this;
+			}
+
+			// helper for testing parser result
+			Parse& WithData(const char* data){
+				Assert::AreEqual(parser.ReadStringData(), data, L"Data should be as expected.");
+				return *this;
+			}
+		};
 
 	};
 }
