@@ -1,0 +1,20 @@
+
+_rand_seed = 0;
+random = function(){
+	_rand_seed = _rand_seed*_rand_seed*31245147+_rand_seed*5161231+194124391;
+	local x = 0;
+	x = _rand_seed-_rand_seed/65536*65536;
+	if (x<0) x = -x;
+	return x<32768;
+};
+
+i=10;
+loop(i>0)
+{
+	local seq = b"00000000 00000000 00000000 00000000";
+	local y = 32;
+	loop (local i=0, i<y, i=i+1)
+		set(seq,i,random());
+	view(seq);
+	i=i-1;
+}

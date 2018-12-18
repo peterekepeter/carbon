@@ -1,6 +1,0 @@
-x = binseq("hello");
-write(x,"file.bin");
-y = read("file.bin");
-if (string(x)==string(y)) view("simple file operations work");
-
-system("pause");

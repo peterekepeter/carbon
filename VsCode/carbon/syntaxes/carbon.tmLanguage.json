@@ -1,0 +1,58 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "carbon",
+	"patterns": [
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#numeric"
+		},
+		{
+			"include": "#identifier"
+		}
+	],
+	"repository": {
+		"identifier":{
+			"patterns": [
+				{
+					"name": "entity.name",
+					"match": "[_a-zA-Z][_0-9a-zA-Z]*"
+				}
+			]
+		},
+		"numeric":{
+			"patterns": [
+				{
+					"name": "constant.numeric.carbon",
+					"match": "((0[xXbB][0-9a-fA-F]+)|[0-9]+)"
+				},
+				{
+					"name": "constant.numeric.carbon",
+					"match": "([0-9]+\\.[0-9]*)|([0-9]*\\.[0-9]+)(e[+-]?[0-9]+)?"
+				}
+			]
+		},
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.carbon",
+				"match": "\\b(function|local|loop|else|break|contine|return|if)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.carbon",
+			"begin": "[bBxXlL]?\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.carbon",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.carbon"
+}

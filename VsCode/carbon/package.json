@@ -1,0 +1,25 @@
+{
+    "name": "carbon",
+    "displayName": "carbon",
+    "description": "Language support for carbon.",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.30.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [{
+            "id": "carbon",
+            "aliases": ["carbon", "carbon"],
+            "extensions": [".co2"],
+            "configuration": "./language-configuration.json"
+        }],
+        "grammars": [{
+            "language": "carbon",
+            "scopeName": "source.carbon",
+            "path": "./syntaxes/carbon.tmLanguage.json"
+        }]
+    }
+}

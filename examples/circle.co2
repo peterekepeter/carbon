@@ -1,0 +1,27 @@
+
+
+fr = 0;
+loop((fr=fr+1)<40)
+{
+	system("cls");
+	size=fr+2+fr/2;
+
+	r=size/2;
+	r=r;
+	r=r*r;	
+	y=size; loop((y=y-1)>0)
+	{
+		s="";
+		x=size; loop((x=x-1)>0)
+		{
+			tx = x-size/2;
+			ty = y-size/2;
+			if (tx*tx+ty*ty<r)
+				s = s+"#";
+			else
+				s = s+" ";
+		}
+		view(s);
+	}
+	system("pause");
+}
