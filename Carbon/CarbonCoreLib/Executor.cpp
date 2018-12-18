@@ -2533,10 +2533,13 @@ namespace Carbon {
 				}
 			} else {
 				SymbolTable.Push();
-				unsigned limit = function->ParameterList.size();
-				if (limit > paramlist.size()) limit = paramlist.size();
-				for (unsigned i = 0; i < limit; i++)
+				unsigned functionParameterCount = function->ParameterList.size();
+				unsigned callParamCount = paramlist.size();
+				unsigned parametersToPass = functionParameterCount > callParamCount ? callParamCount : functionParameterCount;
+				for (unsigned i = 0; i < parametersToPass; i++)
 					SymbolTable.Local(function->ParameterList[i]) = paramlist[i];
+				for (unsigned i = parametersToPass; i < functionParameterCount; i++)
+					SymbolTable.Local(function->ParameterList[i]) = std::make_shared<Node>(NodeType::None);
 				auto result = ExecuteStatement(function->Implementation);
 				SymbolTable.Pop();
 				while (result->GetNodeType() == NodeType::Return) {
