@@ -9,519 +9,524 @@ namespace UnitTestCarbonCompilerLib
 	TEST_CLASS(ParserUnitTest)
 	{
 	public:
-		using InstructionType = Carbon::InstructionType;
-		using Parser = Carbon::Parser;
-		using Lexer = Carbon::Lexer;
-		using ss = std::istringstream;
+		using Type = Carbon::InstructionType;
 
 		TEST_METHOD(ParserEmptyProgram)
 		{
-			ss input(" "); Lexer lexer(input); Parser parser(lexer);
-			auto result = parser.MoveNext();
-			Assert::IsFalse(result);
+			Parsing(" ").ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserEmptyProgramEmptyStatements)
 		{
-			ss input(" ;;;; "); Lexer lexer(input); Parser parser(lexer);
-			auto result = parser.MoveNext();
-			Assert::IsFalse(result);
+			Parsing(" ;;;; ").ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionAssignment)
 		{
-			ss input("x=42"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());
-			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);
-			Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());
-			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);
-			Assert::AreEqual(parser.ReadStringData(), "42");
-			Assert::IsTrue(parser.MoveNext());
-			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());
-			Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("x=42")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("42")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 
 		TEST_METHOD(ParserExpressionOpPriority)
 		{
-			ss input("x=1+2*4-6/2"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "1");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "2");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ADD);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "6");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "2");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::DIVIDE);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::SUBTRACT);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("x=1+2*4-6/2")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("1")
+				.Expect(Type::NUM).WithData("2")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ADD)
+				.Expect(Type::NUM).WithData("6")
+				.Expect(Type::NUM).WithData("2")
+				.Expect(Type::DIVIDE)
+				.Expect(Type::SUBTRACT)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionSubExpression)
 		{
-			ss input("x=3*(4+1)"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "1");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ADD);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("x=3*(4+1)")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::NUM).WithData("1")
+				.Expect(Type::ADD)
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionSubSub)
 		{
-			ss input("x=3*(4+2*(9-4)*7)"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "2");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "9");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::SUBTRACT);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "7");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ADD);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("x=3*(4+2*(9-4)*7)")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::NUM).WithData("2")
+				.Expect(Type::NUM).WithData("9")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::SUBTRACT)
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::NUM).WithData("7")
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ADD)
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionError)
 		{
 			// there is no ** operator, after parsing in x and 3 parsers should throw error
-			ss input("x=3**7)"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::ExpectException<Carbon::ParserException>([&]() { Assert::IsTrue(parser.MoveNext()); });
+			auto& parser = Parsing("x=3**7)")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.ExpectException();
 		}
 		
 		TEST_METHOD(ParserUnaryMinus)
 		{
-			ss input("x=3*-7"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "7");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NEGATIVE);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("x=3*-7")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::NUM).WithData("7")
+				.Expect(Type::NEGATIVE)
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserUnaryPlus)
 		{
-			ss input("x=3*+7"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "7");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::POSITIVE);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("x=3*+7")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::NUM).WithData("7")
+				.Expect(Type::POSITIVE)
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
-
 
 		TEST_METHOD(ParserExpressionObjectSimple)
 		{
-			ss input("obj={}"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "obj");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTBEGIN);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTEND);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("obj={}")
+				.Expect(Type::ID).WithData("obj")
+				.Expect(Type::OBJECTBEGIN)
+				.Expect(Type::OBJECTEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionObject)
 		{
-			ss input("v={x:3,y:4}"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "v");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::OBJECTEND);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("v={x:3,y:4}")
+				.Expect(Type::ID).WithData("v")
+				.Expect(Type::OBJECTBEGIN)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::OBJECTEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionArraySimple)
 		{
-			ss input("v=[]"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "v");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYBEGIN);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYEND);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("v=[]")
+				.Expect(Type::ID).WithData("v")
+				.Expect(Type::ARRAYBEGIN)
+				.Expect(Type::ARRAYEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserExpressionArray)
 		{
-			ss input("v=[3,4]"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "v");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ARRAYEND);
-			Assert::IsTrue(parser.MoveNext());	Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("v=[3,4]")
+				.Expect(Type::ID).WithData("v")
+				.Expect(Type::ARRAYBEGIN)
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::ARRAYEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserFunctionCallSimple)
 		{
-			ss input("print()"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "print");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLEND);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
-			
+			Parsing("print()")
+				.Expect(Type::ID).WithData("print")
+				.Expect(Type::CALLBEGIN)
+				.Expect(Type::CALLEND)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserFunctionCallParams)
 		{
-			ss input("print(a,b,c)"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "print");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "a");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "b");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "c");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLEND);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("print(a,b,c)")
+				.Expect(Type::ID).WithData("print")
+				.Expect(Type::CALLBEGIN)
+				.Expect(Type::ID).WithData("a")
+				.Expect(Type::ID).WithData("b")
+				.Expect(Type::ID).WithData("c")
+				.Expect(Type::CALLEND)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserFunctionCallExpression)
 		{
-			ss input("print(3+4)"); Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "print");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM); Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM); Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ADD);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CALLEND);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("print(3+4)")
+				.Expect(Type::ID).WithData("print")
+				.Expect(Type::CALLBEGIN)
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::ADD)
+				.Expect(Type::CALLEND)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserFunctionParameterless)
 		{
-			ss input("hello = function () 42;;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "hello");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM); Assert::AreEqual(parser.ReadStringData(), "42");
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONEND);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("hello = function () 42;;")
+				.Expect(Type::ID).WithData("hello")
+				.Expect(Type::FUNCTIONBEGIN)
+				.Expect(Type::NUM).WithData("42")
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::FUNCTIONEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserFunction)
 		{
-			ss input("double = function (x) x*x;;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "double");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONEND);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("double = function (x) x*x;;")
+				.Expect(Type::ID).WithData("double")
+				.Expect(Type::FUNCTIONBEGIN)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::FUNCTIONEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserFunctionMultiParam)
 		{
-			ss input("math = function (x,y,z) x*y*z;;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "math");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "z");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID); Assert::AreEqual(parser.ReadStringData(), "z");
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::FUNCTIONEND);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext());  Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("math = function (x,y,z) x*y*z;;")
+				.Expect(Type::ID).WithData("math")
+				.Expect(Type::FUNCTIONBEGIN)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::ID).WithData("z")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::ID).WithData("z")
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::FUNCTIONEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
-
 
 		TEST_METHOD(ParserLocal)
 		{
-			ss input("local x");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);		Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::LOCAL);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("local x")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::LOCAL)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserBreakSimple)
 		{
-			ss input("break;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BREAK);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("break;")
+				.Expect(Type::BREAK)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserContinueSimple)
 		{
-			ss input("continue;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTINUE);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("continue;")
+				.Expect(Type::CONTINUE)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserReturnSimple)
 		{
-			ss input("return;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::RETURN0);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("return;")
+				.Expect(Type::RETURN0)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserReturnExpression)
 		{
-			ss input("return x*y;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::MULTIPLY);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::RETURN1);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("return x*y;")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::RETURN1)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserIfSimple)
 		{
-			ss input("if (x<3) x=3;;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::COMP_LT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::IF);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("if (x<3) x=3;;")
+				.Expect(Type::CONTROL)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::COMP_LT)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::IF)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserIfElseSimple)
 		{
-			ss input("if (x<3) x=3; else x=4;;");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::COMP_LT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::IFELSE);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("if (x<3) x=3; else x=4;;")
+				.Expect(Type::CONTROL)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::COMP_LT)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::IFELSE)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserIfElseBlock)
 		{
-			ss input("if (x<3) {x=3;} else {x=4;};");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::COMP_LT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "3");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKEND);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "4");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKEND);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::IFELSE);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("if (x<3) {x=3;} else {x=4;};")
+				.Expect(Type::CONTROL)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::COMP_LT)
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::IFELSE)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserLoopSimple)
 		{
-			ss input("loop {x=x-1;}");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "x");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "1");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::SUBTRACT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKEND);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::LOOP0);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("loop {x=x-1;}")
+				.Expect(Type::CONTROL)
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::NUM).WithData("1")
+				.Expect(Type::SUBTRACT)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::LOOP0)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserLoop1)
 		{
-			ss input("loop(y<inner_y-12){}");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			// second expr
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "inner_y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "12");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::SUBTRACT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::COMP_LT);
-			// statement
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKEND);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::LOOP1);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("loop(y<inner_y-12){}")
+				.Expect(Type::CONTROL)
+				// second expr
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::ID).WithData("inner_y")
+				.Expect(Type::NUM).WithData("12")
+				.Expect(Type::SUBTRACT)
+				.Expect(Type::COMP_LT)
+				// statement
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::LOOP1)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 		TEST_METHOD(ParserLoop2)
 		{
-			ss input("loop(y = 12, y<inner_y-12){}");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			// first expr
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "12");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			// second expr
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "inner_y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "12");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::SUBTRACT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::COMP_LT);
-			// statement
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKEND);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::LOOP2);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+			Parsing("loop(y = 12, y<inner_y-12){}")
+				.Expect(Type::CONTROL)
+				// first expr
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::NUM).WithData("12")
+				.Expect(Type::ASSIGN)
+				// second expr
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::ID).WithData("inner_y")
+				.Expect(Type::NUM).WithData("12")
+				.Expect(Type::SUBTRACT)
+				.Expect(Type::COMP_LT)
+				// statement
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::LOOP2)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 		TEST_METHOD(ParserLoop3)
 		{
-			Parse("loop(y = 12, y<inner_y-12, y=y+1){}")
-				.Expect(InstructionType::CONTROL)
+			Parsing("loop(y = 12, y<inner_y-12, y=y+1){}")
+				.Expect(Type::CONTROL)
 				// first expr
-				.Expect(InstructionType::ID)	.WithData("y")
-				.Expect(InstructionType::NUM)	.WithData("12")
-				.Expect(InstructionType::ASSIGN)
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::NUM).WithData("12")
+				.Expect(Type::ASSIGN)
 				// second expr
-				.Expect(InstructionType::ID)	.WithData("y")
-				.Expect(InstructionType::ID)	.WithData("inner_y")
-				.Expect(InstructionType::NUM)	.WithData("12")
-				.Expect(InstructionType::SUBTRACT)
-				.Expect(InstructionType::COMP_LT)
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::ID).WithData("inner_y")
+				.Expect(Type::NUM).WithData("12")
+				.Expect(Type::SUBTRACT)
+				.Expect(Type::COMP_LT)
 				// third expr
-				.Expect(InstructionType::ID)	.WithData("y")
-				.Expect(InstructionType::ID)	.WithData("x")
-				.Expect(InstructionType::NUM)	.WithData("1")
-				.Expect(InstructionType::ADD)
-				.Expect(InstructionType::ASSIGN)
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::ID).WithData("y")
+				.Expect(Type::NUM).WithData("1")
+				.Expect(Type::ADD)
+				.Expect(Type::ASSIGN)
 				// statement
-				.Expect(InstructionType::BLOCKBEGIN)
-				.Expect(InstructionType::BLOCKEND)
-				.Expect(InstructionType::LOOP3)
-				.Expect(InstructionType::END_STATEMENT)
-				.EndOfFile();
-				;
-
-			ss input("loop(y = 12, y<inner_y-12, y=y+1){}");  Lexer lexer(input); Parser parser(lexer);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::CONTROL);
-			// first expr
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "12");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			// second expr
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "inner_y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "12");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::SUBTRACT);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::COMP_LT);
-			// third expr
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ID);	Assert::AreEqual(parser.ReadStringData(), "y");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::NUM);	Assert::AreEqual(parser.ReadStringData(), "1");
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ADD);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::ASSIGN);
-			// statement
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKBEGIN);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::BLOCKEND);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::LOOP3);
-			Assert::IsTrue(parser.MoveNext()); Assert::IsTrue(parser.ReadInstructionType() == InstructionType::END_STATEMENT);
-			Assert::IsFalse(parser.MoveNext());
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::LOOP3)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
 		}
 
 	private:
-		class Parse
-		{
-			// refactor regex
-			
-			// Assert::IsTrue\(parser.MoveNext\(\)\);\s+Assert::IsTrue\(parser.ReadInstructionType\(\)\s+==\s+(InstructionType::\w+)\s*\);
-			// Assert::AreEqual\(parser.ReadStringData\(\),\s*("[^"]*")\);
-			// Assert::IsFalse\(parser.MoveNext\(\)\);
 
-			ss stream;
+		class Parsing
+		{
+			using Parser = Carbon::Parser;
+			using Lexer = Carbon::Lexer;
+			using StringStream = std::istringstream;
+
+			StringStream stream;
 			Lexer lexer;
 			Parser parser;
 
 		public:
-			Parse(const char* input) : stream(input), lexer(stream), parser(lexer) { }
+			Parsing(const char* input) : stream(input), lexer(stream), parser(lexer) { }
 
-			Parse(const Parse& other) = delete;
-			Parse(Parse&& other) = delete;
-			Parse& operator = (const Parse& other) = delete;
-			Parse& operator = (Parse&& other) = delete;
+			Parsing(const Parsing& other) = delete;
+			Parsing(Parsing&& other) = delete;
+			Parsing& operator = (const Parsing& other) = delete;
+			Parsing& operator = (Parsing&& other) = delete;
 
-			Parse& EndOfFile() {
+			// continues parsing and check that it reaches and of file, without finding any more instructions
+			Parsing& ExpectEndOfFile() {
 				Assert::IsFalse(parser.MoveNext(), L"File should be ending.");
 				return *this;
 			}
 
-			// helper for testing parser result
-			Parse& Expect(InstructionType type){
-				Assert::IsTrue(parser.MoveNext(), L"Expecting there to be more instructions.");
-				Assert::IsTrue(type == parser.ReadInstructionType(), L"Expecting instruction to be the expected type.");
+			// continues parsing and check that next instruction is of given type
+			Parsing& Expect(Type type){
+				if (parser.MoveNext() == false) {
+					FailWithMessage(L"Expecting there to be more instructions.");
+				}
+				if (type != parser.ReadType()) {
+					FailWithMessage(L"Expecting instruction to be the expected type.");
+				}
 				return *this;
 			}
 
-			// helper for testing parser result
-			Parse& WithData(const char* data){
-				Assert::AreEqual(parser.ReadStringData(), data, L"Data should be as expected.");
+			// checks that the current instruction has data
+			Parsing& WithData(const char* expectedData){
+				auto parsedData = parser.ReadStringData();
+				if (std::strcmp(parsedData, expectedData) != 0) {
+					FailWithMessage(L"Parsed data was not as expected.", expectedData, parsedData);
+				}
 				return *this;
 			}
+
+			// continues parsing and expects the parser to throw an exception
+			Parsing& ExpectException() {
+				try {
+					parser.MoveNext();
+					FailWithMessage(L"Was expecting exception to be thrown, but none was.");
+				}
+				catch (Carbon::ParserException exception) {
+					// ok
+				}
+			}
+
+		private:
+
+			void FailWithMessage(const wchar_t* reason) {
+				Assert::Fail(FormatMessage(reason).c_str());
+			}
+
+			void FailWithMessage(const wchar_t* reason, const char* expected, const char* actual) {
+				Assert::Fail(FormatMessage(reason, expected, actual).c_str());
+			}
+
+			std::wstring FormatMessage(const wchar_t* message, const char* expected, const char* actual) {
+				std::wstringstream builder;
+				builder << "Expected \"" << expected << "\" but found \"" << actual << "\" instead!\n";
+				FormatMessage(message, builder);
+				return builder.str();
+			}
+
+			std::wstring FormatMessage(const wchar_t* message) {
+				std::wstringstream builder;
+				FormatMessage(message, builder);
+				return builder.str();
+			}
+
+			void FormatMessage(const wchar_t* message, std::wstringstream& builder) {
+				builder << message;
+				builder << "\nAt line " << lexer.GetLine() << " pos " << lexer.GetPosition() << " near \"" << lexer.GetData() << "\"";
+			}
+
 		};
 
 	};
