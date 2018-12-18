@@ -473,7 +473,7 @@ namespace UnitTestCarbonCompilerLib
 				if (parser.MoveNext() == false) {
 					FailWithMessage(L"Expecting there to be more instructions.");
 				}
-				if (type != parser.ReadType()) {
+				if (type != parser.ReadInstructionType()) {
 					FailWithMessage(L"Expecting instruction to be the expected type.");
 				}
 				return *this;
