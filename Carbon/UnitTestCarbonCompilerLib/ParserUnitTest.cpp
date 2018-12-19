@@ -497,34 +497,17 @@ namespace UnitTestCarbonCompilerLib
 				catch (Carbon::ParserException exception) {
 					// ok
 				}
+				return *this;
 			}
 
 		private:
 
 			void FailWithMessage(const wchar_t* reason) {
-				Assert::Fail(FormatMessage(reason).c_str());
+				ErrorMessageFormatter(&lexer).FailWithMessage(reason);
 			}
 
 			void FailWithMessage(const wchar_t* reason, const char* expected, const char* actual) {
-				Assert::Fail(FormatMessage(reason, expected, actual).c_str());
-			}
-
-			std::wstring FormatMessage(const wchar_t* message, const char* expected, const char* actual) {
-				std::wstringstream builder;
-				builder << "Expected \"" << expected << "\" but found \"" << actual << "\" instead!\n";
-				FormatMessage(message, builder);
-				return builder.str();
-			}
-
-			std::wstring FormatMessage(const wchar_t* message) {
-				std::wstringstream builder;
-				FormatMessage(message, builder);
-				return builder.str();
-			}
-
-			void FormatMessage(const wchar_t* message, std::wstringstream& builder) {
-				builder << message;
-				builder << "\nAt line " << lexer.GetLine() << " pos " << lexer.GetPosition() << " near \"" << lexer.GetData() << "\"";
+				ErrorMessageFormatter(&lexer).FailWithMessage(reason, expected, actual);
 			}
 
 		};
