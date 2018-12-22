@@ -28,6 +28,11 @@ namespace UnitTestCarbonCompilerLib
 			Executing("2+9*2-5/5").HasIntegerResult(19);
 		}
 
+		TEST_METHOD(LocalVariableInitializerHasAccessToGlobalFunctions)
+		{
+			Executing("t=function(){local x=object();return x;};t();").HasObjectResult();
+		}
+
 	private:
 
 		class Executing
@@ -79,6 +84,10 @@ namespace UnitTestCarbonCompilerLib
 			}
 			Executing& HasNullResult() {
 				HaveResultType(NodeType::None);
+				return *this;
+			}
+			Executing& HasObjectResult() {
+				HaveResultType(NodeType::DynamicObject);
 				return *this;
 			}
 			Executing& HasIntegerResult(long long expectedValue) {

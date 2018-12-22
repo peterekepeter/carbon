@@ -1098,7 +1098,10 @@ namespace Carbon {
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteAssignment(NodeCommand& node) {
 		if (node.Children.size() == 2) {
 			auto lvalue = reinterpret_cast<Node*>(&*node.Children[0]);
+			auto state = SymbolTable.LocalMode;
+			SymbolTable.LocalMode = false;
 			auto rvalue = ExecuteStatement(node.Children[1]);
+			SymbolTable.LocalMode = state;
 			if (lvalue->GetNodeType() == NodeType::Atom) {
 				auto atom = reinterpret_cast<NodeAtom*>(lvalue);
 				if (atom->GetAtomType() == InstructionType::ID) {
