@@ -24,7 +24,7 @@ namespace Carbon {
 		bool GetInteractiveMode();
 
 		// run the submitted commands
-		void Execute();
+		std::shared_ptr<Node> Execute();
 
 		//parse error recovery for console mode
 		void ClearStatement();

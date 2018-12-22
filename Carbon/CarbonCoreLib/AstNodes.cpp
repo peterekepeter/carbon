@@ -4,7 +4,7 @@ namespace Carbon
 {
 	NodeType Node::GetNodeType() const
 	{
-		return Type;
+			return Type;
 	}
 
 	const char* Node::GetText() {
@@ -125,6 +125,8 @@ namespace Carbon
 		case InstructionType::LOOP2: return "LOOP2";
 		case InstructionType::LOOP3: return "LOOP3";
 		case InstructionType::MEMBER: return "MEMBER";
+		case InstructionType::RETURN0: return "RETURN0";
+		case InstructionType::RETURN1: return "RETURN1";
 		default: throw ExecutorImplementationException("Unhandled commandtype.");
 		}
 	}

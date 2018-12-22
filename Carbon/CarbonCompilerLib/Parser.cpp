@@ -748,6 +748,8 @@ bool Carbon::Parser::ParseReturnStatement()
 {
 	switch (lexer.GetToken())
 	{
+	case Token::BracesClose:
+	case Token::FileEnd:
 	case Token::EndStatement:
 		instruction = InstructionType::RETURN0;
 		state.pop(); // go back to statement which handles the end statement token
@@ -766,6 +768,8 @@ bool Carbon::Parser::ParseReturnStatementWithExpression()
 {
 	switch (lexer.GetToken())
 	{
+	case Token::BracesClose:
+	case Token::FileEnd:
 	case Token::EndStatement: // there should be an end statement
 		instruction = InstructionType::RETURN1;
 		state.pop(); // go back to statement which handles the end statement token
