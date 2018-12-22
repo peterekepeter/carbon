@@ -25,7 +25,7 @@ namespace UnitTestCarbonCompilerLib
 
 		TEST_METHOD(ArithmeticOperatorOrderShouldBeRespected)
 		{
-			Executing("2+9*2-4/4").HasIntegerResult(19);
+			Executing("2+9*2-5/5").HasIntegerResult(19);
 		}
 
 	private:
