@@ -671,9 +671,10 @@ namespace Carbon {
 		imp->ClearStatementList();
 	}
 
-	void Executor::Execute() {
-		imp->ExecuteStatementList();
+	std::shared_ptr<Node> Executor::Execute() {
+		auto node = imp->ExecuteStatementList();
 		imp->ClearStatementList();
+		return node;
 	}
 
 	int SymbolTableStack::GetLevel() {
@@ -1263,7 +1264,7 @@ namespace Carbon {
 				result = std::make_shared<Node>(NodeType::Continue);
 				break;
 			case InstructionType::RETURN0:
-				result = std::make_shared<NodeReturn>(nullptr);
+				result = std::make_shared<NodeReturn>(std::make_shared<Node>(NodeType::None));
 				break;
 			case InstructionType::RETURN1:
 				result = std::make_shared<NodeReturn>(ExecuteBlock(node));

@@ -442,6 +442,23 @@ namespace UnitTestCarbonCompilerLib
 				.ExpectEndOfFile();
 		}
 
+		TEST_METHOD(ReturnWithoutParams)
+		{
+			Parsing("return")
+				.Expect(Type::RETURN0)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
+		}
+
+		TEST_METHOD(ReturnWithSingleParameter)
+		{
+			Parsing("return 42")
+				.Expect(Type::NUM)
+				.Expect(Type::RETURN1)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
+		}
+
 	private:
 
 		class Parsing
