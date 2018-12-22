@@ -815,13 +815,20 @@ namespace Carbon {
 			for (auto i = node.Children.begin(); i != node.Children.end(); i++) {
 				executed.push_back(ExecuteStatement(*i));
 			}
+			// swap none to always be first child
+			if (node.Children.size() == 2 &&
+				(node.CommandType == InstructionType::COMP_EQ || node.CommandType == InstructionType::COMP_NE) &&
+				executed[1]->GetNodeType() == NodeType::None) {
+				std::swap(node.Children[0], node.Children[1]); //optimize, next run wont enter this branch
+				std::swap(executed[0], executed[1]);
+			}
 		reexecute:
 			switch (executed[0]->GetNodeType()) {
 				case NodeType::Integer: {
 					if (node.CommandType == InstructionType::MULTIPLY &&
-						executed[1]->GetNodeType() == NodeType::String ||
+						(executed[1]->GetNodeType() == NodeType::String ||
 						executed[1]->GetNodeType() == NodeType::Bits ||
-						executed[1]->GetNodeType() == NodeType::DynamicArray) {
+						executed[1]->GetNodeType() == NodeType::DynamicArray)) {
 						std::swap(node.Children[0], node.Children[1]); //optimize, next run wont enter this branch
 						std::swap(executed[0], executed[1]);
 						goto reexecute;

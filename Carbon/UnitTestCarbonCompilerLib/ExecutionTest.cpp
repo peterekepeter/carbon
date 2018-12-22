@@ -33,6 +33,16 @@ namespace UnitTestCarbonCompilerLib
 			Executing("t=function(){local x=object();return x;};t();").HasObjectResult();
 		}
 
+		TEST_METHOD(ComparingVoidWithIntegerIsFalse)
+		{
+			Executing("void==12").HasBitResult(false);
+		}
+
+		TEST_METHOD(ComparingIntegerWithVoidIsFalse)
+		{
+			Executing("12==void").HasBitResult(false);
+		}
+
 	private:
 
 		class Executing
@@ -92,11 +102,22 @@ namespace UnitTestCarbonCompilerLib
 			}
 			Executing& HasIntegerResult(long long expectedValue) {
 				HaveResultType(NodeType::Integer);
-				auto& integer = *reinterpret_cast<Carbon::NodeInteger*>(&*result);
+				auto integer = *reinterpret_cast<Carbon::NodeInteger*>(&*result);
 				if (integer.Value != expectedValue) {
 					Assert::Fail((std::wstringstream()
 						<< "Was expecting '" << expectedValue
 						<< "' but found '" << integer.Value
+						<< "' instead.").str().c_str());
+				}
+				return *this;
+			}
+			Executing& HasBitResult(bool expectedValue) {
+				HaveResultType(NodeType::Bit);
+				auto bit = *reinterpret_cast<Carbon::NodeBit*>(&*result);
+				if (bit.Value != expectedValue) {
+					Assert::Fail((std::wstringstream()
+						<< "Was expecting '" << expectedValue
+						<< "' but found '" << bit.Value
 						<< "' instead.").str().c_str());
 				}
 				return *this;
