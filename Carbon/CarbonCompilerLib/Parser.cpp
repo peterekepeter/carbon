@@ -367,6 +367,7 @@ bool Carbon::Parser::ParseStatement()
 
 	// file end
 	case Token::FileEnd:
+	case Token::BracesClose:
 		state.pop();
 		instruction = InstructionType::END_STATEMENT;
 		return false; // yield end statement

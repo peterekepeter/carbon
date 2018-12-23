@@ -43,6 +43,31 @@ namespace UnitTestCarbonCompilerLib
 			Executing("12==void").HasBitResult(false);
 		}
 
+		TEST_METHOD(SemicolonOptionalBeforeClosingBracket) 
+		{
+			Executing("t=function(){return 3};t();").HasIntegerResult(3);
+		}
+
+		TEST_METHOD(SemicolonOptionalAfterClosingBracket)
+		{
+			Executing("t=function(){return 3}t();").HasIntegerResult(3);
+		}
+
+		TEST_METHOD(SemicolonOptionalAfterLastStatement)
+		{
+			Executing("t=function(){return 3;};t()").HasIntegerResult(3);
+		}
+
+		TEST_METHOD(ObjectNotationCreatesNewObjects)
+		{
+			Executing(
+				"factory = function(x){local obj={x:4};set(obj,\"y\",x);return obj;};"
+				"local a = factory(13); local b = factory(7);"
+				"get(a,\"y\") != get(a,\"y\");"
+			).HasBitResult(true);
+		}
+		
+
 	private:
 
 		class Executing
@@ -83,6 +108,7 @@ namespace UnitTestCarbonCompilerLib
 				return *this;
 			}
 			Executing& HaveResultType(NodeType type) {
+				ShouldNotFail();
 				if (type == result->GetNodeType()) {
 					return *this;
 				}
