@@ -471,6 +471,19 @@ namespace UnitTestCarbonCompilerLib
 				.ExpectEndOfFile();
 		}
 
+		TEST_METHOD(FunctionOperatorWithFunctionBody) 
+		{
+			Parsing("x -> {return x}")
+				.Expect(Type::ID)
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::ID)
+				.Expect(Type::RETURN1)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::FUNCTION_OPERATOR)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
+		}
+
 	private:
 
 		class Parsing
