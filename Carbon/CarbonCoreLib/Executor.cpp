@@ -322,6 +322,19 @@ namespace Carbon {
 				imp->SymbolTable.Pop();
 				goto end_statement;
 				break;
+			case InstructionType::FUNCTION_OPERATOR: {
+				auto fimpl = imp->stack.top();
+				imp->stack.pop();
+				auto params = imp->stack.top();
+				imp->stack.pop();
+				std::vector<std::string> plist;
+				if (params->IsAtom()) {
+					plist.push_back(params->GetAtomText());
+				}
+				else throw ExecutorImplementationException("only simple function epxressions");
+				imp->stack.push(std::make_shared<NodeFunction>(plist, fimpl));
+				break;
+			}
 			case InstructionType::FUNCTIONEND: {
 				auto fimpl = imp->stack.top();
 				imp->stack.pop();

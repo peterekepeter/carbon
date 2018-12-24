@@ -87,6 +87,7 @@ namespace Carbon
 			Multiply,
 			Divide,
 			Assign,
+			Function,
 			// comparison
 			Equals,
 			NotEquals,
@@ -173,6 +174,8 @@ namespace Carbon
 		switch (op)
 		{
 		case Op::Assign:
+			return 3;
+		case Op::Function:
 			return 4;
 		case Op::Equals:
 		case Op::NotEquals:
@@ -200,6 +203,7 @@ namespace Carbon
 	{
 		switch (op)
 		{
+		case Op::Function:
 		case Op::Assign:
 			return true;
 		default:

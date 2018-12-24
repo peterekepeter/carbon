@@ -49,6 +49,7 @@ namespace Carbon
 		Divide,
 		Not,
 		Member,
+		FunctionOperator,
 
 		// keywords
 

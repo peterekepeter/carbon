@@ -330,6 +330,7 @@ void Carbon::Lexer::ParseOperator()
 		break;
 	case '-':
 		token = Token::Minus;
+		continueParsing = true; // might be ->
 		break;
 	case '<':
 		token = Token::Less;
@@ -338,7 +339,6 @@ void Carbon::Lexer::ParseOperator()
 	case '>':
 		token = Token::Greater;
 		continueParsing = true; // might be >=
-		break;
 		break;
 	case '!':
 		token = Token::Not;
@@ -403,6 +403,14 @@ void Carbon::Lexer::ParseOperator()
 	auto acceptSecond = true;
 	switch (input.peek())
 	{
+	case '>': 
+		if (token == Token::Minus) {
+			token = Token::FunctionOperator;
+		}
+		else {
+			acceptSecond = false;
+		}
+		break;
 	case '=':
 		if (token == Token::Assign) { // equals operator == 
 			token = Token::Equals;

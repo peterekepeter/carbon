@@ -145,7 +145,9 @@ namespace UnitTestCarbonCompilerLib
 
 		TEST_METHOD(LexerOperators)
 		{
-			Lexing("+ - * / == != <= >= < > !")
+			Lexing("= -> + - * / == != <= >= < > !")
+				.Expect(Token::Assign)
+				.Expect(Token::FunctionOperator)
 				.Expect(Token::Plus)
 				.Expect(Token::Minus)
 				.Expect(Token::Multiply)

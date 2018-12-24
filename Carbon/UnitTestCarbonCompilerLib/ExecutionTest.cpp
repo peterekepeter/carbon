@@ -66,6 +66,21 @@ namespace UnitTestCarbonCompilerLib
 				"get(a,\"y\") != get(a,\"y\");"
 			).HasBitResult(true);
 		}
+
+		TEST_METHOD(FunctionExpressionMostBasicForm)
+		{
+			Executing("f=x->x*x;f(3)").HasIntegerResult(9);
+		}
+
+		TEST_METHOD(FunctionExpressionMultiParams)
+		{
+			Executing("f=(x,y)->x*y;f(3,2)").HasIntegerResult(6);
+		}
+
+		TEST_METHOD(FunctionExpressionWithBody)
+		{
+			Executing("f=x->{return x*2};f(2)").HasIntegerResult(4);
+		}
 		
 
 	private:

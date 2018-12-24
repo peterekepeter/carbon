@@ -1004,6 +1004,7 @@ Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
 	case Op::LessOrEqual: return InstructionType::COMP_LE;
 	case Op::UnaryMinus: return InstructionType::NEGATIVE;
 	case Op::UnaryPlus: return InstructionType::POSITIVE;
+	case Op::Function: return InstructionType::FUNCTION_OPERATOR;
 	default:
 		throw std::runtime_error("unexpected parser state");
 	}
@@ -1161,6 +1162,7 @@ bool Carbon::Parser::ParseExpression()
 	case Token::GreaterOrEqual:
 	case Token::Less:
 	case Token::LessOrEqual:
+	case Token::FunctionOperator:
 	case Token::Assign: {
 		// expecting binary op
 		if (opStack.top() != Op::Term) // it must have a valid left hand side
@@ -1334,6 +1336,8 @@ Carbon::Parser::Op Carbon::Parser::TokenToBinaryOp(Token token)
 			return Op::Less;
 		case Token::LessOrEqual:
 			return Op::LessOrEqual;
+		case Token::FunctionOperator:
+			return Op::Function;
 		default:
 			throw ParseError("Invalid operator");
 	}

@@ -459,6 +459,18 @@ namespace UnitTestCarbonCompilerLib
 				.ExpectEndOfFile();
 		}
 
+		TEST_METHOD(FunctionOperator)
+		{
+			Parsing("x->x*x")
+				.Expect(Type::ID)
+				.Expect(Type::ID)
+				.Expect(Type::ID)
+				.Expect(Type::MULTIPLY)
+				.Expect(Type::FUNCTION_OPERATOR)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
+		}
+
 	private:
 
 		class Parsing

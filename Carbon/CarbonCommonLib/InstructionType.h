@@ -50,8 +50,9 @@ namespace Carbon
 		CONTINUE,
 		FUNCTIONBEGIN,
 		FUNCTIONEND,
+		FUNCTION_OPERATOR,
 
-		// it is assumed that all types ater ID require string
+		// it is assumed that all types ater ID require string data
 		ID,   
 		USTR, 
 		XSTR, 
