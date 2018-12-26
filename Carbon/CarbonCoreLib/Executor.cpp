@@ -643,14 +643,11 @@ namespace Carbon {
 		return node;
 	}
 
+	static char integerTextBuffer[256];
 
 	const char* NodeInteger::GetText() {
-		if (text == nullptr) {
-			char buffer[256];
-			sprintf_s<sizeof(buffer)>(buffer, "%lld", this->Value);
-			text = std::make_shared<std::string>(buffer);
-		}
-		return text->c_str();
+		sprintf_s<sizeof(integerTextBuffer)>(integerTextBuffer, "%lld", this->Value);
+		return integerTextBuffer;
 	}
 
 	const char* NodeFloat::GetText() {
@@ -750,7 +747,7 @@ namespace Carbon {
 		return Value ? "1" : "0";
 	};
 
-	NodeInteger::NodeInteger(long long value) : Node(NodeType::Integer), Value(value), text(nullptr) { }
+	NodeInteger::NodeInteger(long long value) : Node(NodeType::Integer), Value(value) { }
 
 	NodeFloat::NodeFloat(double value) : Node(NodeType::Float), Value(value), text(nullptr) { }
 

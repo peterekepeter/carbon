@@ -86,7 +86,6 @@ namespace Carbon
 		long long Value;
 		virtual const char* GetText() override;
 		NodeInteger(long long value);
-		std::shared_ptr<std::string> text;
 	};
 
 	class NodeBits : public Node {
