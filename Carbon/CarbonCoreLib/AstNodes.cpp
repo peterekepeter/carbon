@@ -149,6 +149,53 @@ namespace Carbon
 		Value = b;
 	}
 
+	static int NameIdGenerator = 0;
+	static std::unordered_map<std::string, size_t> NameIdMap;
+	static std::unordered_map<size_t, std::string> IdNameMap;
+
+	std::vector<std::string> NodeObject::GetAttributeKeys()
+	{
+		std::vector<std::string> result;
+		for (auto id : this->Map) {
+			result.push_back(IdNameMap[id.first]);
+		}
+		return result;
+	}
+
+	void NodeObject::SetAttributeValue(const std::string & byName, std::shared_ptr<Node> value)
+	{
+		SetAttributeValue(GetNameId(byName), value);
+	}
+
+	void NodeObject::SetAttributeValue(const size_t byNameId, std::shared_ptr<Node> value)
+	{
+		this->Map[byNameId] = value;
+	}
+
+	std::shared_ptr<Node> NodeObject::GetAttributeValue(const std::string & byName)
+	{
+		return GetAttributeValue(GetNameId(byName));
+	}
+
+	std::shared_ptr<Node> NodeObject::GetAttributeValue(const size_t byNameId)
+	{
+		return this->Map[byNameId];
+	}
+
+	size_t NodeObject::GetNameId(const std::string & name)
+	{
+		size_t id;
+		auto search = NameIdMap.find(name);
+		if (search == NameIdMap.end()) {
+			id = ++NameIdGenerator;
+			NameIdMap[name] = id;
+			IdNameMap[id] = name;
+		}
+		else {
+			id = search->second;
+		}
+		return id;
+	}
 
 	const char* NodeObject::GetText() {
 		return "object";

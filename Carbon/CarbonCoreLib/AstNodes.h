@@ -108,8 +108,14 @@ namespace Carbon
 	};
 
 	class NodeObject : public Node {
+		std::unordered_map<size_t, std::shared_ptr<Node>> Map;
 	public:
-		std::unordered_map<std::string, std::shared_ptr<Node>> Map;
+		std::vector<std::string> GetAttributeKeys();
+		void SetAttributeValue(const std::string & byName, std::shared_ptr<Node> value);
+		void SetAttributeValue(const size_t byNameId, std::shared_ptr<Node> value);
+		std::shared_ptr<Node> GetAttributeValue(const std::string& byName);
+		std::shared_ptr<Node> GetAttributeValue(const size_t byNameId);
+		size_t GetNameId(const std::string& name);
 		virtual const char* GetText() override;
 		NodeObject();
 	};

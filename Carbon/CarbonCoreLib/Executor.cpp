@@ -401,17 +401,17 @@ namespace Carbon {
 					{
 						imp->stack.pop();
 						auto objectNode = std::make_shared<NodeObject>();
-						auto& map = objectNode->Map;
 						for (int i=collector.size(); i>0; i-=2)
 						{
 							auto& key = reinterpret_cast<NodeAtom&>(*collector[i - 1]);
 							if (key.GetNodeType() == NodeType::String)
 							{
 								auto& str = reinterpret_cast<NodeString&>(key);
-								map[str.Value] = collector[i - 2];
+								// map[str.Value] = collector[i - 2];
+								objectNode->SetAttributeValue(str.Value, collector[i - 2]);
 							} else
 							{
-								map[key.AtomText] = collector[i - 2];
+								objectNode->SetAttributeValue(key.AtomText, collector[i - 2]);
 							}
 						}
 						imp->stack.push(objectNode);
@@ -1100,9 +1100,9 @@ namespace Carbon {
 					auto& idx = atom->AtomText;
 					if (lvalue->GetNodeType() == NodeType::DynamicObject) {
 						auto& object = reinterpret_cast<NodeObject&>(*lvalue);
-						auto& container = object.Map;
-						if (container.find(idx) != container.end())
-							return container[idx];
+						auto result = object.GetAttributeValue(idx);
+						if (result != nullptr)
+							return result;
 						else
 							return std::make_shared<Node>(NodeType::None);
 					}
@@ -1134,12 +1134,11 @@ namespace Carbon {
 				if (container->GetNodeType() != NodeType::DynamicObject)
 					throw ExecutorRuntimeException("left side of member operator is not an object");
 				auto& object = reinterpret_cast<NodeObject&>(*container);
-				auto& map = object.Map;
 				auto& index = member.Children[1];
 				if (index->GetAtomType() != InstructionType::ID)
 					throw ExecutorRuntimeException("right side of member oeprator is not an identifier");
 				auto& idx = reinterpret_cast<NodeAtom&>(*index).AtomText;
-				map[idx] = rvalue;
+				object.SetAttributeValue(idx, rvalue);
 				return rvalue;
 			}
 			throw ExecutorRuntimeException("left side of an assignment must be an identifier");
@@ -1373,27 +1372,16 @@ namespace Carbon {
 						break;
 					case NodeType::DynamicObject: {
 						auto& n = reinterpret_cast<NodeObject&>(**i);
-						printf("object: (");
-						auto i = n.Map.begin();
-						if (i == n.Map.end())
-						{
-							printf(") ");
+						printf("object: {");
+						auto keys = n.GetAttributeKeys();
+						for (auto& key : keys) {
+
+							printf("%s: ", key.c_str());
+							view_primitive(*n.GetAttributeValue(key), ", ");
 						}
-						else
-						{
-							while (true) {
-								auto j = i;
-								j++;
-								if (j == n.Map.end()) break;
-								printf("%s: ", i->first.c_str());
-								view_primitive(*(i->second), ", ");
-								i = j;
-							}
-							printf("%s: ", i->first.c_str());
-							view_primitive(*(i->second), ") ");
-						}
-					}
+						printf("} ");
 						break;
+					}
 					case NodeType::Bits: {
 						auto& n = reinterpret_cast<NodeBits&>(**i);
 						auto size = n.Value.size();
@@ -1487,16 +1475,16 @@ namespace Carbon {
 				}
 				else if (argumentParam->GetNodeType() == NodeType::DynamicObject)
 				{
-					auto& map = reinterpret_cast<NodeObject*>(argumentParam)->Map;
+					auto argument = reinterpret_cast<NodeObject*>(argumentParam);
 					auto results = std::make_shared<NodeObject>();
-					auto& rmap = results->Map;
-					std::vector<std::function<void(void)>> tasks(map.size());
-					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(map.size());
+					auto keys = argument->GetAttributeKeys();
+					std::vector<std::function<void(void)>> tasks(keys.size());
+					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(keys.size());
 					int i = 0;
-					for (auto mapItem : map)
+					for (auto key : keys)
 					{
-						resultsVector[i].first = mapItem.first;
-						auto param = mapItem.second;
+						resultsVector[i].first = key;
+						auto param = argument->GetAttributeValue(key);
 						tasks[i] = [i, &resultsVector, &node, param, ex]()
 						{
 							NodeCommand cmd(InstructionType::CALL);
@@ -1510,7 +1498,7 @@ namespace Carbon {
 					task->WaitUntilDone();
 					for (auto& element : resultsVector)
 					{
-						rmap.insert_or_assign(element.first, element.second);
+						results->SetAttributeValue(element.first, element.second);
 					}
 					return results;
 				}
@@ -1570,16 +1558,16 @@ namespace Carbon {
 			case NodeType::DynamicObject:
 				if (argumentParam == nullptr)
 				{
-					auto& fnMap = reinterpret_cast<NodeObject&>(functionParam).Map;
-					std::vector<std::function<void(void)>> tasks(fnMap.size());
+					auto argument = reinterpret_cast<NodeObject*>(argumentParam);
+					auto argumentKeys = argument->GetAttributeKeys();
+					std::vector<std::function<void(void)>> tasks(argumentKeys.size());
 					auto results = std::make_shared<NodeObject>();
-					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(fnMap.size());
-					auto& rmap = results->Map;
+					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(argumentKeys.size());
 					int i = 0;
-					for (auto function : fnMap)
+					for (auto key : argumentKeys)
 					{
-						resultsVector[i].first = function.first;
-						auto param = function.second;
+						resultsVector[i].first = key;
+						auto param = argument->GetAttributeValue(key);
 						tasks[i] = [param, i, &resultsVector, &node, ex]()
 						{
 							NodeCommand cmd(InstructionType::CALL);
@@ -1592,22 +1580,22 @@ namespace Carbon {
 					task->WaitUntilDone();
 					for (auto& element : resultsVector)
 					{
-						rmap.insert_or_assign(element.first, element.second);
+						results->SetAttributeValue(element.first, element.second);
 					}
 					return results;
 				}
 				else
 				{
-					auto& fnMap = reinterpret_cast<NodeObject&>(functionParam).Map;
-					std::vector<std::function<void(void)>> tasks(fnMap.size());
+					auto argument = reinterpret_cast<NodeObject*>(argumentParam);
+					auto argumentKeys = argument->GetAttributeKeys();
+					std::vector<std::function<void(void)>> tasks(argumentKeys.size());
 					auto results = std::make_shared<NodeObject>();
-					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(fnMap.size());
-					auto& rmap = results->Map;
+					std::vector<std::pair<std::string, std::shared_ptr<Node>>> resultsVector(argumentKeys.size());
 					int i = 0;
-					for (auto function : fnMap)
+					for (auto key : argumentKeys)
 					{
-						resultsVector[i].first = function.first;
-						auto param = function.second;
+						resultsVector[i].first = key;
+						auto param = argument->GetAttributeValue(key);
 						tasks[i] = [param, i, &resultsVector, &node, ex]()
 						{
 							NodeCommand cmd(InstructionType::CALL);
@@ -1621,7 +1609,7 @@ namespace Carbon {
 					task->WaitUntilDone();
 					for (auto& element : resultsVector)
 					{
-						rmap.insert_or_assign(element.first, element.second);
+						results->SetAttributeValue(element.first, element.second);
 					}
 					return results;
 				}
@@ -1982,10 +1970,11 @@ namespace Carbon {
 
 					case NodeType::DynamicObject: {
 						if (node[1]->GetNodeType() != NodeType::String) throw Carbon::ExecutorRuntimeException("object can only be indexed by string");
-						auto& container = reinterpret_cast<NodeObject&>(*node[0]).Map;
+						auto& object = reinterpret_cast<NodeObject&>(*node[0]);
 						auto& idx = reinterpret_cast<NodeString&>(*node[1]).Value;
-						if (container.find(idx) != container.end())
-							return container[idx];
+						auto result = object.GetAttributeValue(idx);
+						if (result != nullptr)
+							return result;
 						else
 							return std::make_shared<Node>(NodeType::None);
 					}
@@ -2006,7 +1995,7 @@ namespace Carbon {
 						auto& container = reinterpret_cast<NodeString&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = reinterpret_cast<NodeInteger&>(*node[2]).Value;
-						if (idx < 0 || idx > container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
+						if (idx < 0 || idx >= container.size()) throw Carbon::ExecutorRuntimeException("index out of bounds when trying to set char code in string");
 						container[idx] = val;
 						return node[2];
 					}
@@ -2017,19 +2006,19 @@ namespace Carbon {
 						auto& container = reinterpret_cast<NodeArray&>(*node[0]).Vector;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = node[2];
-						if (idx < 0 || idx > container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
+						if (idx < 0 || idx >= container.size()) throw Carbon::ExecutorRuntimeException("index out of bounds when trying to set element in dynamic array");
 						container[idx] = val;
 						return node[2];
 					}
 						break;
 
 					case NodeType::Bits: {
-						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("string can only be indexed by integer");
+						if (node[1]->GetNodeType() != NodeType::Integer) throw Carbon::ExecutorRuntimeException("binary sequence can only be indexed by integer");
 						if (node[2]->GetNodeType() != NodeType::Bit) throw Carbon::ExecutorRuntimeException("value must be a bit");
 						auto& container = reinterpret_cast<NodeBits&>(*node[0]).Value;
 						auto& idx = reinterpret_cast<NodeInteger&>(*node[1]).Value;
 						auto& val = reinterpret_cast<NodeBit&>(*node[2]).Value;
-						if (idx < 0 || idx > container.size()) throw Carbon::ExecutorRuntimeException("string index out of bounds");
+						if (idx < 0 || idx >= container.size()) throw Carbon::ExecutorRuntimeException("index out of bounds when trying to set bit in binary seruence");
 						container[idx] = val;
 						return node[2];
 					}
@@ -2037,10 +2026,10 @@ namespace Carbon {
 
 					case NodeType::DynamicObject: {
 						if (node[1]->GetNodeType() != NodeType::String) throw Carbon::ExecutorRuntimeException("object can only be indexed by string");
-						auto& container = reinterpret_cast<NodeObject&>(*node[0]).Map;
+						auto& object = reinterpret_cast<NodeObject&>(*node[0]);
 						auto& idx = reinterpret_cast<NodeString&>(*node[1]).Value;
 						auto& val = node[2];
-						container[idx] = val;
+						object.SetAttributeValue(idx, val);
 						return node[2];
 					}
 						break;
@@ -2207,8 +2196,8 @@ namespace Carbon {
 					auto& obj = reinterpret_cast<NodeObject&>(*node[0]);
 					auto arr = std::make_shared<NodeArray>();
 					std::vector<std::string> propList;
-					for (auto i = obj.Map.begin(); i != obj.Map.end(); i++) {
-						arr->Vector.push_back(std::make_shared<NodeString>(i->first));
+					for (auto key : obj.GetAttributeKeys()) {
+						arr->Vector.push_back(std::make_shared<NodeString>(key));
 					}
 					return arr;
 				} else return ex->Error("first parameter of properties must be an object");
