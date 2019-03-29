@@ -1354,6 +1354,13 @@ namespace Carbon {
 			}
 		}
 
+		static std::shared_ptr<Node> print(std::vector<std::shared_ptr<Node>>& node) {
+			for (auto i = node.begin(); i != node.end(); i++) {
+				view_primitive(**i,"");
+			}
+			return std::make_shared<Node>(NodeType::None);
+		}
+
 		static std::shared_ptr<Node> view(std::vector<std::shared_ptr<Node>>& node) {
 			for (auto i = node.begin(); i != node.end(); i++) {
 				switch ((*i)->GetNodeType()) {
@@ -2446,6 +2453,7 @@ namespace Carbon {
 
 		//printing
 		RegisterNativeFunction("view", native::view, false);
+		RegisterNativeFunction("print", native::print, false);
 
 		//type information
 		RegisterNativeFunction("type", native::type, true);
