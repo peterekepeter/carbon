@@ -6,6 +6,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <string>
+#include <functional>
 
 namespace Carbon
 {
