@@ -1117,17 +1117,31 @@ namespace Carbon {
 
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteAssignment(NodeCommand& node) {
 		if (node.Children.size() == 2) {
-			auto lvalue = reinterpret_cast<Node*>(&*node.Children[0]);
-			auto state = SymbolTable.LocalMode;
+			Node* lvalue = &*node.Children[0];
+
+			auto savedLocalState = SymbolTable.LocalMode;
 			SymbolTable.LocalMode = false;
 			auto rvalue = ExecuteStatement(node.Children[1]);
-			SymbolTable.LocalMode = state;
+			SymbolTable.LocalMode = savedLocalState;
+
+			bool isLocalAssign = false;
+			if (lvalue->IsCommand() && lvalue->GetCommandType() == InstructionType::LOCAL) {
+				lvalue = &*(reinterpret_cast<NodeCommand*>(lvalue))->Children[0];
+				isLocalAssign = true;
+			}
+
 			if (lvalue->GetNodeType() == NodeType::Atom) {
 				auto atom = reinterpret_cast<NodeAtom*>(lvalue);
 				if (atom->GetAtomType() == InstructionType::ID) {
-					return this->SymbolTable[atom->AtomText] = rvalue;
+					if (isLocalAssign) {
+						return this->SymbolTable.Local(atom->AtomText) = rvalue;
+					}
+					else {
+						return this->SymbolTable[atom->AtomText] = rvalue;
+					}
 				} else throw ExecutorRuntimeException(atom->AtomText + " is not a valid indentifier");
-			} else if (lvalue->GetCommandType() == InstructionType::MEMBER)
+			} 
+			else if (lvalue->GetCommandType() == InstructionType::MEMBER)
 			{
 				auto& member = reinterpret_cast<NodeCommand&>(*lvalue);
 				auto container = ExecuteStatement(member.Children[0]);

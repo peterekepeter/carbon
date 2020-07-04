@@ -1005,6 +1005,7 @@ Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
 	case Op::UnaryMinus: return InstructionType::NEGATIVE;
 	case Op::UnaryPlus: return InstructionType::POSITIVE;
 	case Op::Function: return InstructionType::FUNCTION_OPERATOR;
+	case Op::Local: return InstructionType::LOCAL;
 	default:
 		throw std::runtime_error("unexpected parser state");
 	}
@@ -1017,8 +1018,8 @@ bool Carbon::Parser::ParseExpression()
 	case Token::Local:
 		consumeToken = true; // consume function token
 		state.pop();
-		state.push(State::LocalEnd);
 		state.push(State::Expression);
+		opStack.push(Op::Local);
 		break;
 		
 	case Token::Function:// function expression
@@ -1377,6 +1378,7 @@ bool Carbon::Parser::OpIsUnary(Op op)
 	{
 		case Op::UnaryMinus:
 		case Op::UnaryPlus:
+		case Op::Local:
 			return true;
 		default:
 			return false;

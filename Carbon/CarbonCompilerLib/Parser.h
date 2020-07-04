@@ -81,6 +81,7 @@ namespace Carbon
 			// unary ops
 			UnaryPlus,
 			UnaryMinus,
+			Local,
 			// binary ops
 			Add,
 			Subtract,
