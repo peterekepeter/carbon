@@ -497,6 +497,9 @@ namespace Carbon {
 					}
 				} while (!finished);
 				imp->SymbolTable.Pop();
+				if (imp->stack.size() != 1) {
+					break;
+				}
 			}
 				//passthrough
 			case InstructionType::END_STATEMENT:

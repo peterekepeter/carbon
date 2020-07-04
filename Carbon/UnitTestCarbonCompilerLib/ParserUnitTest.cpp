@@ -478,6 +478,7 @@ namespace UnitTestCarbonCompilerLib
 				.Expect(Type::BLOCKBEGIN)
 				.Expect(Type::ID)
 				.Expect(Type::RETURN1)
+				.Expect(Type::END_STATEMENT)
 				.Expect(Type::BLOCKEND)
 				.Expect(Type::FUNCTION_OPERATOR)
 				.Expect(Type::END_STATEMENT)
@@ -511,11 +512,12 @@ namespace UnitTestCarbonCompilerLib
 			}
 
 			// continues parsing and check that next instruction is of given type
-			Parsing& Expect(Type type){
+			Parsing& Expect(Type expectedType){
 				if (parser.MoveNext() == false) {
 					FailWithMessage(L"Expecting there to be more instructions.");
 				}
-				if (type != parser.ReadInstructionType()) {
+				auto type = parser.ReadInstructionType();
+				if (expectedType != type) {
 					FailWithMessage(L"Expecting instruction to be the expected type.");
 				}
 				return *this;

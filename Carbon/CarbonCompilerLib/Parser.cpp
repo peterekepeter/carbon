@@ -1134,14 +1134,29 @@ bool Carbon::Parser::ParseExpression()
 		// check if we had term last
 		if (opStack.top() == Op::Term)
 		{
-			// "a{x:3}" is not valid syntax
+			// a { x : 3 } // is not valid syntax
+			//   ^
 			throw ParseError("Unexpected object, expecting operator or function call");
 		}
-		opStack.push(Op::Braces);
-		state.push(State::KeyValue);
-		consumeToken = true; // consume token
-		instruction = InstructionType::OBJECTBEGIN;
-		return false; // yield instruction
+		if (opStack.top() == Op::Function) 
+		{
+			// x -> { return x; }
+			//      ^
+			state.push(State::Block);
+			consumeToken = true; // consume token
+			instruction = InstructionType::BLOCKBEGIN;
+			return false; // yield instruction
+		}
+		else 
+		{
+			// v = { x:4, y:3 }
+			//     ^
+			opStack.push(Op::Braces);
+			state.push(State::KeyValue);
+			consumeToken = true; // consume token
+			instruction = InstructionType::OBJECTBEGIN;
+			return false; // yield instruction
+		}
 
 	// operators
 	case Token::Plus:
