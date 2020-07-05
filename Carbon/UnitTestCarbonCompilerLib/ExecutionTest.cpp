@@ -63,7 +63,7 @@ namespace UnitTestCarbonCompilerLib
 			Executing(
 				"factory = function(x){local obj={x:4};set(obj,\"y\",x);return obj;};"
 				"local a = factory(13); local b = factory(7);"
-				"get(a,\"y\") != get(a,\"y\");"
+				"get(a,\"y\") != get(b,\"y\");"
 			).HasBitResult(true);
 		}
 

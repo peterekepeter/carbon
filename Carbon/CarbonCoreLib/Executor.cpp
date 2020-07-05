@@ -92,6 +92,7 @@ namespace Carbon {
 		inline std::shared_ptr<Node> ExecuteConditional(NodeCommand& node);
 		inline std::shared_ptr<Node> ExecuteLoop(NodeCommand& node);
 		inline std::shared_ptr<Node> ExecuteMemberOperator(NodeCommand& node);
+		inline std::shared_ptr<Node> ExecuteStructureFactory(NodeStructureFactory& node);
 		inline std::shared_ptr<Node> Error(std::string message);
 	};
 
@@ -400,21 +401,6 @@ namespace Carbon {
 					if (top->IsCommand() && top->GetCommandType() == InstructionType::OBJECTBEGIN)
 					{
 						imp->stack.pop();
-						auto objectNode = std::make_shared<NodeObject>();
-						for (int i=collector.size(); i>0; i-=2)
-						{
-							auto& key = reinterpret_cast<NodeAtom&>(*collector[i - 1]);
-							if (key.GetNodeType() == NodeType::String)
-							{
-								auto& str = reinterpret_cast<NodeString&>(key);
-								// map[str.Value] = collector[i - 2];
-								objectNode->SetAttributeValue(str.Value, collector[i - 2]);
-							} else
-							{
-								objectNode->SetAttributeValue(key.AtomText, collector[i - 2]);
-							}
-						}
-						imp->stack.push(objectNode);
 						finished = true;
 					}
 					else
@@ -425,6 +411,21 @@ namespace Carbon {
 						imp->stack.pop();
 					}
 				}
+
+				auto structure = std::make_shared<NodeStructureFactory>();
+				structure->IsObjectFactory = true;
+
+				for (int i = collector.size(); i > 0; i -= 2)
+				{
+					auto& keyNode = reinterpret_cast<NodeAtom&>(*collector[i - 1]);
+					const std::string& keyStr = keyNode.GetNodeType() == NodeType::String
+						? (reinterpret_cast<NodeString&>(keyNode)).Value
+						: keyNode.AtomText;
+
+					structure->KeysIds.push_back(NodeObject::GetNameId(keyStr));
+					structure->Expressions.push_back(collector[i - 2]);
+				}
+				imp->stack.push(structure);
 
 			}
 				break;
@@ -1115,6 +1116,33 @@ namespace Carbon {
 		else throw ExecutorImplementationException("Member operator requires 2 parameters.");
 	}
 
+	inline std::shared_ptr<Node> ExecutorImp::ExecuteStructureFactory(NodeStructureFactory& node)
+	{
+		if (node.IsObjectFactory) {
+			auto object = std::make_shared<NodeObject>();
+			for (size_t i = 0; i < node.Expressions.size(); i++) {
+				const auto& expression = node.Expressions[i];
+				const auto& key = node.KeysIds[i];
+				object->SetAttributeValue(key, ExecuteStatement(expression));
+			}
+			return object;
+		}
+		else if (node.IsArrayFactory)
+		{
+			auto array = std::make_shared<NodeArray>();
+			array->Vector.resize(node.Expressions.size());
+			for (size_t i = 0; i < node.Expressions.size(); i++) {
+				const auto& expression = node.Expressions[i];
+				array->Vector[i] = ExecuteStatement(expression);
+			}
+			return array;
+		}
+		else
+		{
+			throw ExecutorRuntimeException("invalid structure factory");
+		}
+	}
+
 	inline std::shared_ptr<Node> ExecutorImp::ExecuteAssignment(NodeCommand& node) {
 		if (node.Children.size() == 2) {
 			Node* lvalue = &*node.Children[0];
@@ -1334,6 +1362,8 @@ namespace Carbon {
 						throw ExecutorRuntimeException(id.AtomText + " is undefined");
 				} else return node;
 			}
+			case NodeType::StrctureFactory:
+				return ExecuteStructureFactory(reinterpret_cast<NodeStructureFactory&>(*node));
 			default:
 				return node;
 		}

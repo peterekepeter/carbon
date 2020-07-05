@@ -28,6 +28,7 @@ namespace Carbon
 		Function,
 		DynamicArray,
 		DynamicObject,
+		StrctureFactory
 	};
 	
 	// get a displayable type text for a NodeType
@@ -114,7 +115,7 @@ namespace Carbon
 		void SetAttributeValue(const size_t byNameId, std::shared_ptr<Node> value);
 		std::shared_ptr<Node> GetAttributeValue(const std::string& byName);
 		std::shared_ptr<Node> GetAttributeValue(const size_t byNameId);
-		size_t GetNameId(const std::string& name);
+		static size_t GetNameId(const std::string& name);
 		virtual const char* GetText() override;
 		NodeObject();
 	};
@@ -152,6 +153,15 @@ namespace Carbon
 		virtual const char* GetText() override;
 	};
 
+	class NodeStructureFactory : public Node {
+	public:
+		bool IsArrayFactory = false;
+		bool IsObjectFactory = false;
+		NodeStructureFactory();
+		std::vector<std::shared_ptr<Node>> Expressions;
+		std::vector<size_t> KeysIds;
+		virtual const char* GetText() override;
+	};
 
 }
 

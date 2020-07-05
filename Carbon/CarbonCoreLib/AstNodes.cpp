@@ -223,4 +223,13 @@ namespace Carbon
 		Vector = vec;
 	};
 
+	NodeStructureFactory::NodeStructureFactory(): Node(NodeType::StrctureFactory) { }
+
+	const char* NodeStructureFactory::GetText()
+	{
+		if (IsArrayFactory) return "structure_factory(array)";
+		if (IsObjectFactory) return "structure_factory(object)";
+		return "structure_factory";
+	}
+
 }
