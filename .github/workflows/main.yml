@@ -15,8 +15,10 @@ jobs:
 
     - name: Build
       run: |
-        "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/Common7/IDE/devenv" Carbon/Carbon.sln /build
+        $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE"
+        devenv Carbon/Carbon.sln /build
 
     - name: Test
       run: |
-        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\Extensions\TestPlatform\vstest.console" Carbon/Debug/UnitTestCarbonCompilerLib.dll
+        $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\Extensions\TestPlatform"
+        vstest.console Carbon/Debug/UnitTestCarbonCompilerLib.dll
