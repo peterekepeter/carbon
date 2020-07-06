@@ -1,5 +1,9 @@
 #include "Parser.h"
 
+#ifdef DEBUG_PRINT_STATE
+#include <iostream>
+#endif
+
 // more or less the following is implemented here
 // 
 // %right '='
@@ -130,6 +134,29 @@ bool Carbon::Parser::MoveNext()
 	instructionData.clear();
 	bool parsing = true;
 	while (parsing) {
+
+#ifdef DEBUG_PRINT_STATE
+		std::cout << " <> token: " << this->lexer.GetData() << " pos: " << this->lexer.GetPosition();
+
+		auto stateCpy = this->state;
+		std::cout << " <> state: ";
+		while (!stateCpy.empty()) {
+			std::cout << Parser::EnumStateToString(stateCpy.top()) << " ";
+			stateCpy.pop();
+		}
+
+		auto opCpy = this->opStack;
+		std::cout << " <> op:";
+		while (!opCpy.empty())
+		{
+			std::cout << Parser::EnumOpToString(opCpy.top()) << " ";
+			opCpy.pop();
+		}
+		std::cout << "\n";
+		std::cout << "\n";
+
+#endif
+			
 		// advance lexer if needed, this is done here so that REPL can return at end of expression
 		if (consumeToken == true) {
 			// the parser has previouselt signaled to advance lexer
@@ -157,6 +184,9 @@ bool Carbon::Parser::MoveNext()
 			break;
 		case State::Expression:
 			parsing = ParseExpression();
+			break;
+		case State::ExpressionEnd:
+			parsing = ParseExpressionEnd();
 			break;
 		case State::ExpressionPopUnary:
 			parsing = ParseExpressionPopUnary();
@@ -270,6 +300,85 @@ const char * Carbon::Parser::ReadStringData()
 	return this->instructionData.c_str();
 }
 
+#ifdef DEBUG_PRINT_STATE
+const char* Carbon::Parser::EnumStateToString(Carbon::Parser::State value)
+{
+	switch (value) 
+	{
+		case Carbon::Parser::State::Program:                       return "Program";
+		case Carbon::Parser::State::Statement:                     return "Statement";
+		case Carbon::Parser::State::BlockOrObject:                 return "BlockOrObject";
+		case Carbon::Parser::State::BlockOrObject2ndToken:         return "BlockOrObject2ndToken";
+		case Carbon::Parser::State::BlockTemp:                     return "BlockTemp";
+		case Carbon::Parser::State::Block:                         return "Block";
+		case Carbon::Parser::State::ObjectTemp:                    return "ObjectTemp";
+		case Carbon::Parser::State::Expression:                    return "Expression";
+		case Carbon::Parser::State::ExpressionEnd:                 return "ExpressionEnd";
+		case Carbon::Parser::State::ExpressionPopUnary:            return "ExpressionPopUnary";
+		case Carbon::Parser::State::KeyValue:                      return "KeyValue";
+		case Carbon::Parser::State::KeyValueColon:                 return "KeyValueColon";
+		case Carbon::Parser::State::KeyValueComma:                 return "KeyValueComma";
+		case Carbon::Parser::State::CallList:                      return "CallList";
+		case Carbon::Parser::State::CallListComma:                 return "CallListComma";
+		case Carbon::Parser::State::IdList:                        return "IdList";
+		case Carbon::Parser::State::IdListComma:                   return "IdListComma";
+		case Carbon::Parser::State::FunctionEnd:                   return "FunctionEnd";
+		case Carbon::Parser::State::FunctionBegin:                 return "FunctionBegin";
+		case Carbon::Parser::State::FunctionEndParameters:         return "FunctionEndParameters";
+		case Carbon::Parser::State::LocalEnd:                      return "LocalEnd";
+		case Carbon::Parser::State::BreakStatement:                return "BreakStatement";
+		case Carbon::Parser::State::ContinueStatement:             return "ContinueStatement";
+		case Carbon::Parser::State::ReturnStatement:               return "ReturnStatement";
+		case Carbon::Parser::State::ReturnStatementWithExpression: return "ReturnStatementWithExpression";
+		case Carbon::Parser::State::IfBeginParam:                  return "IfBeginParam";
+		case Carbon::Parser::State::IfEndParam:                    return "IfEndParam";
+		case Carbon::Parser::State::IfElse:                        return "IfElse";
+		case Carbon::Parser::State::IfElseEnd:                     return "IfElseEnd";
+		case Carbon::Parser::State::LoopBegin:                     return "LoopBegin";
+		case Carbon::Parser::State::LoopEnd0:                      return "LoopEnd0";
+		case Carbon::Parser::State::LoopParamBegin:                return "LoopParamBegin";
+		case Carbon::Parser::State::LoopParamComma:                return "LoopParamComma";
+		case Carbon::Parser::State::LoopParamSecond:               return "LoopParamSecond";
+		case Carbon::Parser::State::LoopEnd1:                      return "LoopEnd1";
+		case Carbon::Parser::State::LoopParamSecondComma:          return "LoopParamSecondComma";
+		case Carbon::Parser::State::LoopParamThird:                return "LoopParamThird";
+		case Carbon::Parser::State::LoopEnd2:                      return "LoopEnd2";
+		case Carbon::Parser::State::LoopParamThirdEnd:             return "LoopParamThirdEnd";
+		case Carbon::Parser::State::LoopEnd3:                      return "LoopEnd3";
+	}
+	throw std::logic_error("EnumOpToString: missing case");
+}
+
+const char* Carbon::Parser::EnumOpToString(Op value)
+{
+	switch (value) 
+	{
+		case Carbon::Parser::Op::Term:           return "Term";
+		case Carbon::Parser::Op::Expression:     return "Expression";
+		case Carbon::Parser::Op::Paranthesis:    return "Paranthesis";
+		case Carbon::Parser::Op::Braces:         return "Braces";
+		case Carbon::Parser::Op::Bracket:        return "Bracket";
+		case Carbon::Parser::Op::FunctionCall:   return "FunctionCall";
+		case Carbon::Parser::Op::UnaryPlus:      return "UnaryPlus";
+		case Carbon::Parser::Op::UnaryMinus:     return "UnaryMinus";
+		case Carbon::Parser::Op::Local:          return "Local";
+		case Carbon::Parser::Op::Add:            return "Add";
+		case Carbon::Parser::Op::Subtract:       return "Subtract";
+		case Carbon::Parser::Op::Multiply:       return "Multiply";
+		case Carbon::Parser::Op::Divide:         return "Divide";
+		case Carbon::Parser::Op::Assign:         return "Assign";
+		case Carbon::Parser::Op::Function:       return "Function";
+		case Carbon::Parser::Op::Equals:         return "Equals";
+		case Carbon::Parser::Op::NotEquals:      return "NotEquals";
+		case Carbon::Parser::Op::Greater:        return "Greater";
+		case Carbon::Parser::Op::GreaterOrEqual: return "GreaterOrEqual";
+		case Carbon::Parser::Op::Less:           return "Less";
+		case Carbon::Parser::Op::LessOrEqual:    return "LessOrEqual";
+	}
+	throw std::logic_error("EnumOpToString: missing case");
+}
+#endif
+
 bool Carbon::Parser::ParseProgram()
 {
 	switch (lexer.GetToken()) {
@@ -304,6 +413,9 @@ bool Carbon::Parser::ParseStatement()
 		consumeToken = true;
 		state.pop();
 		// found instruction
+		if (instruction == InstructionType::END_STATEMENT) {
+			return true; // don't emit more than one END_STATEMENT at a time
+		}
 		instruction = InstructionType::END_STATEMENT;
 		return false; // yield end statement
 
@@ -672,6 +784,7 @@ bool Carbon::Parser::ParseFunctionEnd()
 {
 	state.pop();
 	instruction = InstructionType::FUNCTIONEND;
+	state.push(State::ExpressionEnd);
 	return false;
 }
 
@@ -1250,26 +1363,12 @@ bool Carbon::Parser::ParseExpression()
 	case Token::Comma:
 		if (opStack.size()>0)
 		{
-			// check if term is on top
-			if (opStack.top()==Op::Term)
+			if (ParseExpressionEndImpl())
 			{
-				// yep, term was the last token in expression, this is pretty normal
-				opStack.pop();
+				state.pop(); // Expression
+				return true;
 			}
-			// now lets check if we reached the end of expression
-			if (opStack.top()==Op::Expression)
-			{
-				state.pop();
-				opStack.pop();
-				return true; // end of epxression, continue parsing
-			}
-			else
-			{
-				// no, we have some more instructions left
-				instruction = OpToInstructionType(opStack.top());
-				opStack.pop();
-				return false; // yield
-			}
+			return false;
 		}
 		else
 		{
@@ -1279,6 +1378,40 @@ bool Carbon::Parser::ParseExpression()
 	default:
 		throw ParseError();
 		break;
+	}
+}
+
+bool Carbon::Parser::ParseExpressionEnd()
+{
+	if (ParseExpressionEndImpl()) {
+		state.pop(); // pop ExpressionEnd
+		state.pop(); // pop Expression 
+		instruction = InstructionType::END_STATEMENT;
+		return false;
+	}
+	return false;
+}
+
+bool Carbon::Parser::ParseExpressionEndImpl()
+{
+	// check if term is on top
+	if (opStack.top() == Op::Term)
+	{
+		// yep, term was the last token in expression, this is pretty normal
+		opStack.pop();
+	}
+	// now lets check if we reached the end of expression
+	if (opStack.top() == Op::Expression)
+	{
+		opStack.pop();
+		return true; // end of epxression, continue parsing
+	}
+	else
+	{
+		// no, we have some more instructions left
+		instruction = OpToInstructionType(opStack.top());
+		opStack.pop();
+		return false; // yield
 	}
 }
 

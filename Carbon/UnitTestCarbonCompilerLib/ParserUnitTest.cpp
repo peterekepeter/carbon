@@ -234,6 +234,26 @@ namespace UnitTestCarbonCompilerLib
 				.ExpectEndOfFile();
 		}
 
+		TEST_METHOD(ParserEndStatementOptionalAfterFunctionClosingBraces)
+		{
+			Parsing("t=function(){return 3}t();")
+				.Expect(Type::ID).WithData("t")
+				.Expect(Type::FUNCTIONBEGIN)
+				.Expect(Type::BLOCKBEGIN)
+				.Expect(Type::NUM).WithData("3")
+				.Expect(Type::RETURN1)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::BLOCKEND)
+				.Expect(Type::FUNCTIONEND)
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.Expect(Type::ID).WithData("t")
+				.Expect(Type::CALLBEGIN)
+				.Expect(Type::CALLEND)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
+		}
+
 		TEST_METHOD(ParserFunctionMultiParam)
 		{
 			Parsing("math = function (x,y,z) x*y*z;;")

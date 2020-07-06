@@ -3,6 +3,9 @@
 #include <stack>
 #include "../CarbonCommonLib/Instruction.h"
 
+
+//#define DEBUG_PRINT_STATE
+
 namespace Carbon
 {
 	// parser
@@ -36,6 +39,7 @@ namespace Carbon
 			ObjectTemp,
 			Expression,
 			ExpressionPopUnary,
+			ExpressionEnd,
 			KeyValue,
 			KeyValueColon,
 			KeyValueComma,
@@ -98,6 +102,11 @@ namespace Carbon
 			LessOrEqual
 		};
 
+#ifdef DEBUG_PRINT_STATE
+		static const char* EnumStateToString(State state);
+		static const char* EnumOpToString(Op state);
+#endif
+
 		bool ParseProgram();
 		bool ParseStatement();
 		bool ParseBlockOrObject();
@@ -105,6 +114,8 @@ namespace Carbon
 		bool ParseBlockTemp();
 		bool ParseBlock();
 		bool ParseExpression();
+		bool ParseExpressionEnd();
+		bool ParseExpressionEndImpl();
 		bool ParseExpressionPopUnary();
 		bool ParseKeyValue();
 		bool ParseKeyValueColon();
