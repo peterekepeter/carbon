@@ -1120,6 +1120,7 @@ Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
 	case Op::UnaryPlus: return InstructionType::POSITIVE;
 	case Op::Function: return InstructionType::FUNCTION_OPERATOR;
 	case Op::Local: return InstructionType::LOCAL;
+	case Op::Comma: return InstructionType::COMMA;
 	default:
 		throw std::runtime_error("unexpected parser state");
 	}
@@ -1359,11 +1360,22 @@ bool Carbon::Parser::ParseExpression()
 			return false; // yield instruction
 		}
 		// purpusefully fall through, closing braces are ending current expression
+	case Token::Comma:
 	case Token::FileEnd:
 	case Token::EndStatement:
-	case Token::Comma:
 		if (opStack.size()>0)
 		{
+			// check if term is on top
+			if (opStack.top() == Op::Term)
+			{
+				// yep, term was the last token in expression, this is pretty normal
+				opStack.pop();
+			}
+			if (token == Token::Comma && opStack.top() == Op::Paranthesis) {
+				opStack.push(Op::Comma);
+				consumeToken = true;
+				return true;
+			}
 			if (ParseExpressionEndImpl())
 			{
 				state.pop(); // Expression

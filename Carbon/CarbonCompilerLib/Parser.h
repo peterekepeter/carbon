@@ -93,6 +93,7 @@ namespace Carbon
 			Divide,
 			Assign,
 			Function,
+			Comma,
 			// comparison
 			Equals,
 			NotEquals,

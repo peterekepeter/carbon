@@ -224,6 +224,19 @@ namespace Carbon {
 		}
 	}
 
+	void FlattenCommaExpressionToFunctionParams(const std::shared_ptr<Node>& expr, std::vector<std::string>& outp) {
+		if (expr->IsAtom() && expr->GetAtomType() == InstructionType::ID) {
+			outp.push_back(expr->GetAtomText());
+		}
+		else if (expr->IsCommand() && expr->GetCommandType() == InstructionType::COMMA) {
+			auto commaExpression = reinterpret_cast<const NodeCommand*>(&*expr);
+			for (auto& child : commaExpression->Children) {
+				FlattenCommaExpressionToFunctionParams(child, outp);
+			}
+		}
+		else throw ExecutorRuntimeException("invalid function parameter");
+	}
+
 	void Executor::WriteInstruction(InstructionType cmd) {
 		//transform into tree
 		auto node = std::make_shared<NodeCommand>(cmd);
@@ -242,6 +255,7 @@ namespace Carbon {
 			case InstructionType::COMP_LE:
 			case InstructionType::COMP_GT:
 			case InstructionType::COMP_LT:
+			case InstructionType::COMMA:
 				// infix operators
 				node->Children.resize(2);
 				node->Children[1] = imp->ReplaceIdIfPossible(imp->stack.top());
@@ -329,10 +343,10 @@ namespace Carbon {
 				auto params = imp->stack.top();
 				imp->stack.pop();
 				std::vector<std::string> plist;
-				if (params->IsAtom()) {
-					plist.push_back(params->GetAtomText());
+				if (params->IsAtom() || params->IsCommand() && params->GetCommandType() == InstructionType::COMMA) {
+					FlattenCommaExpressionToFunctionParams(params, plist);
 				}
-				else throw ExecutorImplementationException("only simple function epxressions");
+				else throw ExecutorImplementationException("invalid function syntax");
 				imp->stack.push(std::make_shared<NodeFunction>(plist, fimpl));
 				break;
 			}
@@ -1338,6 +1352,7 @@ namespace Carbon {
 			case InstructionType::CALLBEGIN:
 			case InstructionType::CALLEND:
 			case InstructionType::END_STATEMENT: throw ExecutorImplementationException("should have been processed");
+			case InstructionType::COMMA: throw ExecutorImplementationException("the \",\" operator  should only be used for separating function parameters");
 			default: throw ExecutorImplementationException("unhandled case");
 		}
 

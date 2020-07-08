@@ -127,6 +127,8 @@ namespace Carbon
 		case InstructionType::MEMBER: return "MEMBER";
 		case InstructionType::RETURN0: return "RETURN0";
 		case InstructionType::RETURN1: return "RETURN1";
+		case InstructionType::FUNCTION_OPERATOR: return "FUNCTION_OPERATOR";
+		case InstructionType::COMMA: return "COMMA";
 		default: throw ExecutorImplementationException("Unhandled commandtype.");
 		}
 	}
