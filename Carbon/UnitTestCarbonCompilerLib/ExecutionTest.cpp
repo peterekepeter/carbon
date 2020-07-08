@@ -81,7 +81,12 @@ namespace UnitTestCarbonCompilerLib
 		{
 			Executing("f=x->{return x*2};f(2)").HasIntegerResult(4);
 		}
-		
+
+		TEST_METHOD(OperatorOrderSpecifiedThroughParanthesis)
+		{
+			Executing("(1+2)*3").HasIntegerResult(9);
+		}
+
 
 	private:
 

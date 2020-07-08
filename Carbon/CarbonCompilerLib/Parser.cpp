@@ -473,6 +473,7 @@ bool Carbon::Parser::ParseStatement()
 	case Token::NumberOctal:
 	case Token::Minus:
 	case Token::Plus:
+	case Token::ParanthesisOpen:
 		state.push(State::Expression); // start parsing expression
 		opStack.push(Op::Expression);
 		return true; //continue parsing
