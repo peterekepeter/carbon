@@ -1121,6 +1121,7 @@ Carbon::InstructionType Carbon::Parser::OpToInstructionType(Op top) const
 	case Op::Function: return InstructionType::FUNCTION_OPERATOR;
 	case Op::Local: return InstructionType::LOCAL;
 	case Op::Comma: return InstructionType::COMMA;
+	case Op::Member: return InstructionType::MEMBER;
 	default:
 		throw std::runtime_error("unexpected parser state");
 	}
@@ -1289,6 +1290,7 @@ bool Carbon::Parser::ParseExpression()
 	case Token::Divide:
 	case Token::Equals:
 	case Token::NotEquals:
+	case Token::Member:
 	case Token::Greater:
 	case Token::GreaterOrEqual:
 	case Token::Less:
@@ -1500,6 +1502,8 @@ Carbon::Parser::Op Carbon::Parser::TokenToBinaryOp(Token token)
 			return Op::LessOrEqual;
 		case Token::FunctionOperator:
 			return Op::Function;
+		case Token::Member:
+			return Op::Member;
 		default:
 			throw ParseError("Invalid operator");
 	}

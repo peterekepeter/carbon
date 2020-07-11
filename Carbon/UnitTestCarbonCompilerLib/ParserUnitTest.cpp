@@ -294,6 +294,18 @@ namespace UnitTestCarbonCompilerLib
 				.ExpectEndOfFile();
 		}
 
+		TEST_METHOD(ParserMemberAssign)
+		{
+			Parsing("a.x=4;")
+				.Expect(Type::ID).WithData("a")
+				.Expect(Type::ID).WithData("x")
+				.Expect(Type::MEMBER)
+				.Expect(Type::NUM).WithData("4")
+				.Expect(Type::ASSIGN)
+				.Expect(Type::END_STATEMENT)
+				.ExpectEndOfFile();
+		}
+
 		TEST_METHOD(ParserBreakSimple)
 		{
 			Parsing("break;")

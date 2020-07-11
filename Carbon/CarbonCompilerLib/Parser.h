@@ -94,6 +94,7 @@ namespace Carbon
 			Assign,
 			Function,
 			Comma,
+			Member,
 			// comparison
 			Equals,
 			NotEquals,
@@ -204,6 +205,8 @@ namespace Carbon
 		case Op::Multiply:
 		case Op::Divide:
 			return 8;
+		case Op::Member:
+			return 17;
 		case Op::UnaryMinus:
 		case Op::UnaryPlus:
 			return 18;
