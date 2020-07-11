@@ -60,11 +60,7 @@ namespace UnitTestCarbonCompilerLib
 
 		TEST_METHOD(ObjectNotationCreatesNewObjects)
 		{
-			Executing(
-				"factory = function(x){local obj={x:4};set(obj,\"y\",x);return obj;};"
-				"local a = factory(13); local b = factory(7);"
-				"get(a,\"y\") != get(b,\"y\");"
-			).HasBitResult(true);
+			Executing("f=_->({});a=f();b=f();a.x=4;b.x=7;a.x!=b.x;").HasBitResult(true);
 		}
 
 		TEST_METHOD(FunctionExpressionMostBasicForm)
@@ -85,6 +81,16 @@ namespace UnitTestCarbonCompilerLib
 		TEST_METHOD(OperatorOrderSpecifiedThroughParanthesis)
 		{
 			Executing("(1+2)*3").HasIntegerResult(9);
+		}
+
+		TEST_METHOD(CanSetMemberOfObject)
+		{
+			Executing("a={};a.x=4;get(a,\"x\");").HasIntegerResult(4);
+		}
+
+		TEST_METHOD(DeepMemberAccess) 
+		{
+			Executing("a={};a.x={};a.x.y=2;a.x.y*2;").HasIntegerResult(4);
 		}
 
 
