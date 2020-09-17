@@ -265,7 +265,7 @@ namespace binseq {
 		return b;
 	}
 
-	bit_sequence not(const bit_sequence& a) {
+	bit_sequence _not(const bit_sequence& a) {
 		bit_sequence b;
 		b.reallocate(a.size());
 		auto a64 = reinterpret_cast<const u64*>(a.address());
@@ -278,7 +278,7 @@ namespace binseq {
 		return b;
 	}
 
-	bit_sequence and(const bit_sequence& a, const bit_sequence& b) {
+	bit_sequence _and(const bit_sequence& a, const bit_sequence& b) {
 		if (a.size() != b.size())
 			throw std::logic_error("can't compare sequences of different length");
 		bit_sequence c;
@@ -294,7 +294,7 @@ namespace binseq {
 		return c;
 	}
 
-	bit_sequence or(const bit_sequence& a, const bit_sequence& b) {
+	bit_sequence _or(const bit_sequence& a, const bit_sequence& b) {
 		if (a.size() != b.size())
 			throw std::logic_error("can't compare sequences of different length");
 		bit_sequence c;
@@ -310,7 +310,7 @@ namespace binseq {
 		return c;
 	}
 
-	bit_sequence xor(const bit_sequence& a, const bit_sequence& b) {
+	bit_sequence _xor(const bit_sequence& a, const bit_sequence& b) {
 		if (a.size() != b.size())
 			throw std::logic_error("can't compare sequences of different length");
 		bit_sequence c;
@@ -499,7 +499,7 @@ namespace binseq {
 			}
 			return c;
 		} else {
-			return and(a, repeat(b, as));
+			return _and(a, repeat(b, as));
 		}
 	}
 
@@ -532,7 +532,7 @@ namespace binseq {
 			}
 			return c;
 		} else {
-			return or(a, repeat(b, as));
+			return _or(a, repeat(b, as));
 		}
 	}
 
@@ -565,7 +565,7 @@ namespace binseq {
 			}
 			return c;
 		} else {
-			return xor(a, repeat(b, as));
+			return _xor(a, repeat(b, as));
 		}
 	}
 

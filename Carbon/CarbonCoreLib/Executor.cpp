@@ -2281,7 +2281,7 @@ namespace Carbon {
 						return std::make_shared<NodeBit>(!v.Value);
 					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& v = reinterpret_cast<NodeBits&>(*node[0]);
-						return std::make_shared<NodeBits>(binseq::not(v.Value));
+						return std::make_shared<NodeBits>(binseq::_not(v.Value));
 					} else throw Carbon::ExecutorRuntimeException("not operator only works on binseq or bit");
 				} else throw Carbon::ExecutorRuntimeException("not operator requires 1 parameter");
 			}
@@ -2295,7 +2295,7 @@ namespace Carbon {
 					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
-						return std::make_shared<NodeBits>(binseq::and(l.Value, r.Value));
+						return std::make_shared<NodeBits>(binseq::_and(l.Value, r.Value));
 					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
 				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
@@ -2309,7 +2309,7 @@ namespace Carbon {
 					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
-						return std::make_shared<NodeBits>(binseq::or(l.Value, r.Value));
+						return std::make_shared<NodeBits>(binseq::_or(l.Value, r.Value));
 					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
 				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
@@ -2323,7 +2323,7 @@ namespace Carbon {
 					} else if (node[0]->GetNodeType() == NodeType::Bits) {
 						auto& l = reinterpret_cast<NodeBits&>(*node[0]);
 						auto& r = reinterpret_cast<NodeBits&>(*node[1]);
-						return std::make_shared<NodeBits>(binseq::xor(l.Value, r.Value));
+						return std::make_shared<NodeBits>(binseq::_xor(l.Value, r.Value));
 					} else throw Carbon::ExecutorRuntimeException("bitwise operator only works on binseq or bit");
 				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}

@@ -178,11 +178,11 @@ namespace binseq {
 
 	/* standard operators */
 
-	bit_sequence not(const bit_sequence&);
+	bit_sequence _not(const bit_sequence&);
 
-	bit_sequence and(const bit_sequence&, const bit_sequence&);
-	bit_sequence or(const bit_sequence&, const bit_sequence&);
-	bit_sequence xor(const bit_sequence&, const bit_sequence&);
+	bit_sequence _and(const bit_sequence&, const bit_sequence&);
+	bit_sequence _or(const bit_sequence&, const bit_sequence&);
+	bit_sequence _xor(const bit_sequence&, const bit_sequence&);
 	bit_sequence nand(const bit_sequence&, const bit_sequence&);
 	bit_sequence nor(const bit_sequence&, const bit_sequence&);
 	bit_sequence nxor(const bit_sequence&, const bit_sequence&);
