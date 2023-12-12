@@ -17,7 +17,7 @@ screen = array(inner_y);
 chars = array(9);
 iteration=0;
 
-loop(y = 12, y<inner_y-12, y=y+1){
+loop(y = 11, y<inner_y-11, y=y+1){
 	loop(x=28, x<inner_x-28, x=x+1){
 		set(map,x+(y+1)*outer_x+1,random());
 	};

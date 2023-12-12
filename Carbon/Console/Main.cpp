@@ -7,6 +7,9 @@
 #include <iostream>
 #include <fstream>
 
+#ifndef sprintf_s
+	#define sprintf_s sprintf
+#endif
 
 std::string prepareString(const char* str) {
 	std::string builder = "\"";

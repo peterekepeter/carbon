@@ -1,5 +1,6 @@
 #include "types.hpp"
 #include "bit_sequence.hpp"
+#include <stddef.h>
 
 
 namespace binseq {
@@ -18,7 +19,7 @@ namespace binseq {
 	}
 
 	inline unsigned char bitc(const char x) {
-		return btc_table[unsigned char(x)];
+		return btc_table[static_cast<unsigned char>(x)];
 	}
 
 	inline unsigned char bitc(const unsigned short x) {
@@ -26,7 +27,7 @@ namespace binseq {
 	}
 
 	inline unsigned char bitc(const short x) {
-		return btc_table[unsigned short(x)];
+		return btc_table[static_cast<unsigned short>(x)];
 	}
 
 	inline unsigned char bitc(const unsigned x) {

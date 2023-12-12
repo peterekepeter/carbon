@@ -1,14 +1,9 @@
 #include "binseq.hpp"
 #include <cstring>
 #include <stdexcept>
+#include "bit_collection.hpp"
 
 namespace binseq{
-  
-    bit_sequence::bit_sequence(const char* str){
-      auto len = strlen(str);
-      allocate(len*8);
-      std::memcpy(address(),str,len);
-    }
                                                           
     bool operator == ( bit_sequence&a,  bit_sequence&b)
     {
@@ -278,7 +273,7 @@ namespace binseq{
       return b;
     }
 
-    bit_sequence not (bit_sequence& a){
+    bit_sequence _not (bit_sequence& a){
       bit_sequence b;
       b.reallocate(a.size());
       auto a64 = reinterpret_cast<u64*>(a.address());
@@ -291,7 +286,7 @@ namespace binseq{
       return b;
     }
 
-    bit_sequence and ( bit_sequence& a,  bit_sequence& b){
+    bit_sequence _and ( bit_sequence& a,  bit_sequence& b){
       if (a.size() != b.size()) 
         throw std::logic_error("can't compare sequences of different length");
       bit_sequence c;
@@ -307,7 +302,7 @@ namespace binseq{
       return c;
     }
 
-    bit_sequence  or ( bit_sequence& a,  bit_sequence& b){
+    bit_sequence  _or ( bit_sequence& a,  bit_sequence& b){
       if (a.size() != b.size()) 
         throw std::logic_error("can't compare sequences of different length");
       bit_sequence c;
@@ -323,7 +318,7 @@ namespace binseq{
       return c;
     }
 
-    bit_sequence xor ( bit_sequence& a,  bit_sequence& b){
+    bit_sequence _xor ( bit_sequence& a,  bit_sequence& b){
       if (a.size() != b.size()) 
         throw std::logic_error("can't compare sequences of different length");
       bit_sequence c;
@@ -511,7 +506,7 @@ namespace binseq{
         }
         return c;
       } else {
-        return and(a,repeat(b,as));
+        return _and(a,repeat(b,as));
       }
     }
 
@@ -544,7 +539,7 @@ namespace binseq{
         }
         return c;
       } else {
-        return or(a,repeat(b,as));
+        return _or(a,repeat(b,as));
       }
     }
       
@@ -577,7 +572,7 @@ namespace binseq{
         }
         return c;
       } else {
-        return xor(a,repeat(b,as));
+        return _xor(a,repeat(b,as));
       }
     }
 

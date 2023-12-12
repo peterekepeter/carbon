@@ -1136,6 +1136,7 @@ bool Carbon::Parser::ParseExpression()
 		state.pop();
 		state.push(State::Expression);
 		opStack.push(Op::Local);
+		return true;
 		break;
 		
 	case Token::Function:// function expression
@@ -1337,9 +1338,6 @@ bool Carbon::Parser::ParseExpression()
 			return false;
 		}
 	}
-		break;
-
-
 	case Token::BracketClose:
 		// should have baracket on top
 		if (opStack.top() == Op::Bracket)

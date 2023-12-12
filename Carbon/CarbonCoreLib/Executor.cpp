@@ -15,6 +15,12 @@
 #include <sstream>
 #include "Threading.h"
 
+
+#ifndef sprintf_s
+	#define sprintf_s sprintf
+	#define SPRINTF_S_FALLBACK
+#endif
+
 #pragma warning(disable:4482)
 
 namespace Carbon {
@@ -78,7 +84,7 @@ namespace Carbon {
 		std::shared_ptr<Node> OptimizeIfPossible(std::shared_ptr<Node>);
 		void RegisterNativeFunction(const char* name, native_function_ptr, bool pure);
 		void RegisterInternalNativeFunction(const char* name, std::shared_ptr<Node> (*fptr)(ExecutorImp* ex, std::vector<std::shared_ptr<Node>>& node), bool pure);
-		ExecutorImp::ExecutorImp();
+		ExecutorImp();
 		std::shared_ptr<Node> ExecuteStatement(std::shared_ptr<Node>);
 		std::shared_ptr<Node> ExecuteStatementList();
 		void ClearStatementList();
@@ -205,7 +211,7 @@ namespace Carbon {
 		}
 
 		if (imp->VERBOSE_SUBMIT)
-			printf("ATM %d %s\n", type, imp->stack.top()->GetText());
+			printf("ATM %d %s\n", static_cast<int>(type), imp->stack.top()->GetText());
 	}
 
 	void Executor::RegisterNativeFunction(const char* name, native_function_ptr fn, bool pure)
@@ -639,6 +645,8 @@ namespace Carbon {
 									return node;
 								};
 								return std::make_shared<NodeInteger>(a->Value / b->Value);
+							default:
+								throw ExecutorImplementationException("Unhandled integer operator.");
 						}
 					}
 
@@ -653,6 +661,8 @@ namespace Carbon {
 							case InstructionType::MULTIPLY: return std::make_shared<NodeFloat>(a->Value * b->Value);
 							case InstructionType::DIVIDE:
 								return std::make_shared<NodeFloat>(a->Value / b->Value);
+							default:
+								throw ExecutorImplementationException("Unhandled float operator.");
 						}
 					}
 				}
@@ -664,14 +674,22 @@ namespace Carbon {
 	static char integerTextBuffer[256];
 
 	const char* NodeInteger::GetText() {
-		sprintf_s<sizeof(integerTextBuffer)>(integerTextBuffer, "%lld", this->Value);
+		#ifndef SPRINTF_S_FALLBACK
+			sprintf_s<sizeof(integerTextBuffer)>(integerTextBuffer, "%lld", this->Value);
+		#else
+			sprintf(integerTextBuffer, "%lld", this->Value);
+		#endif
 		return integerTextBuffer;
 	}
 
 	const char* NodeFloat::GetText() {
 		if (text == nullptr) {
 			char buffer[256];
-			sprintf_s<sizeof(buffer)>(buffer, "%g", this->Value);
+			#ifndef SPRINTF_S_FALLBACK
+				sprintf_s<sizeof(buffer)>(buffer, "%g", this->Value);
+			#else
+				sprintf_s(buffer, "%g", this->Value);
+			#endif
 			text = std::make_shared<std::string>(buffer);
 		}
 		return text->c_str();
@@ -829,6 +847,7 @@ namespace Carbon {
 					switch (node.CommandType) {
 						case InstructionType::POSITIVE: return executed;
 						case InstructionType::NEGATIVE: return std::make_shared<NodeBit>(!bval.Value);
+						default: throw ExecutorImplementationException("unexpected commandtype");
 					}
 				}
 				default:
@@ -879,6 +898,7 @@ namespace Carbon {
 									break;
 								case InstructionType::DIVIDE: if (val == 0) throw ExecutorRuntimeException("integer division by 0"); else acc->Value /= val;
 									break;
+								default: throw ExecutorImplementationException("unhandled infix arithmetic operator");
 							}
 						}
 						return acc;
@@ -892,6 +912,7 @@ namespace Carbon {
 							case InstructionType::COMP_GE: return std::make_shared<NodeBit>(a.Value >= b.Value);
 							case InstructionType::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
 							case InstructionType::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
+							default: throw ExecutorImplementationException("unhandled infix comparison operator");
 						}
 					} else throw ExecutorRuntimeException("error in expression");
 
@@ -916,6 +937,7 @@ namespace Carbon {
 									break;
 								case InstructionType::DIVIDE: acc->Value /= val;
 									break;
+								default: throw ExecutorImplementationException("unhandled infix float operator");
 							}
 						}
 						return acc;
@@ -929,6 +951,7 @@ namespace Carbon {
 							case InstructionType::COMP_GE: return std::make_shared<NodeBit>(a.Value >= b.Value);
 							case InstructionType::COMP_LT: return std::make_shared<NodeBit>(a.Value < b.Value);
 							case InstructionType::COMP_GT: return std::make_shared<NodeBit>(a.Value > b.Value);
+							default: throw ExecutorImplementationException("unhandled infix float comparison");
 						}
 					}
 				}
@@ -1074,6 +1097,7 @@ namespace Carbon {
 									break;
 								case InstructionType::MULTIPLY: acc->Value = acc->Value && val;
 									break;
+								default: throw ExecutorImplementationException("unhandled bit operator");
 							}
 						}
 						return acc;
@@ -1083,7 +1107,7 @@ namespace Carbon {
 						switch (node.CommandType) {
 							case InstructionType::COMP_EQ: return std::make_shared<NodeBit>(a.Value == b.Value);
 							case InstructionType::COMP_NE: return std::make_shared<NodeBit>(a.Value != b.Value);
-							default: throw ExecutorRuntimeException("invalid expression");
+							default: throw ExecutorRuntimeException("unhandled bit comparison");
 						}
 					} else throw ExecutorRuntimeException("error in expression");
 
@@ -1402,9 +1426,9 @@ namespace Carbon {
 					break;
 				case NodeType::String: printf("%s%s", reinterpret_cast<NodeString&>(node).Value.c_str(), sep);
 					break;
-				case NodeType::DynamicArray: printf("array(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
+				case NodeType::DynamicArray: printf("array(%lu)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
 					break;
-				case NodeType::Bits: printf("binseq(%d)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
+				case NodeType::Bits: printf("binseq(%lu)%s", reinterpret_cast<NodeArray&>(node).Vector.size(), sep);
 					break;
 				case NodeType::DynamicObject: printf("object%s", sep);
 					break;
@@ -1429,7 +1453,7 @@ namespace Carbon {
 					case NodeType::DynamicArray: {
 						auto& n = reinterpret_cast<NodeArray&>(**i);
 						auto size = n.Vector.size();
-						printf("array(%d): (", size);
+						printf("array(%lu): (", size);
 						for (unsigned i = 0; i < size; i++) {
 							auto sep = i < size - 1 ? ", " : ") ";
 							view_primitive(*n.Vector[i], sep);
@@ -1869,7 +1893,7 @@ namespace Carbon {
 						break;
 					case NodeType::Integer: val = (bool) reinterpret_cast<NodeInteger&>(*node[0]).Value;
 						break;
-					case NodeType::String: val = !reinterpret_cast<NodeString&>(*node[0]).Value.compare("0") == 0;
+					case NodeType::String: val = reinterpret_cast<NodeString&>(*node[0]).Value.compare("0") != 0;
 						break;
 					case NodeType::Bits: val = ((bool) reinterpret_cast<NodeBits&>(*node[0]).Value[0]);
 						break;
@@ -1995,6 +2019,14 @@ namespace Carbon {
 					case NodeType::DynamicArray: r = "array";
 						break;
 					case NodeType::DynamicObject: r = "object";
+						break;
+					case NodeType::Continue: r = "continue"; 
+						break;
+					case NodeType::Break: r = "break"; 
+						break;
+					case NodeType::Return: r = "return"; 
+						break;
+					case NodeType::StrctureFactory: r = "StrctureFactory"; 
 						break;
 				}
 				return std::make_shared<NodeString>(r);
@@ -2274,7 +2306,7 @@ namespace Carbon {
 		namespace op {
 
 
-			static std::shared_ptr<Node> not(std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> _not(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 1) {
 					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& v = reinterpret_cast<NodeBit&>(*node[0]);
@@ -2286,7 +2318,7 @@ namespace Carbon {
 				} else throw Carbon::ExecutorRuntimeException("not operator requires 1 parameter");
 			}
 
-			static std::shared_ptr<Node> and(std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> _and(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
 					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
@@ -2300,7 +2332,7 @@ namespace Carbon {
 				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> or(std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> _or(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
 					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
@@ -2314,7 +2346,7 @@ namespace Carbon {
 				} else throw Carbon::ExecutorRuntimeException("bitwise operator requires 2 parameters");
 			}
 
-			static std::shared_ptr<Node> xor(std::vector<std::shared_ptr<Node>>& node) {
+			static std::shared_ptr<Node> _xor(std::vector<std::shared_ptr<Node>>& node) {
 				if (node.size() == 2) {
 					if (node[0]->GetNodeType() == NodeType::Bit) {
 						auto& l = reinterpret_cast<NodeBit&>(*node[0]);
@@ -2548,10 +2580,10 @@ namespace Carbon {
 		RegisterNativeFunction("write", native::file_write, false);
 
 		//bits operators                                       
-		RegisterNativeFunction("not", native::op::not, true);
-		RegisterNativeFunction("and", native::op::and, true);
-		RegisterNativeFunction("or", native::op::or, true);
-		RegisterNativeFunction("xor", native::op::xor, true);
+		RegisterNativeFunction("not", native::op::_not, true);
+		RegisterNativeFunction("and", native::op::_and, true);
+		RegisterNativeFunction("or", native::op::_or, true);
+		RegisterNativeFunction("xor", native::op::_xor, true);
 		RegisterNativeFunction("nand", native::op::nand, true);
 		RegisterNativeFunction("nor", native::op::nor, true);
 		RegisterNativeFunction("nxor", native::op::nxor, true);

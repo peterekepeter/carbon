@@ -22,3 +22,5 @@ bld/
 *.VC.VC.opendb
 *.VC.db
 *.user
+
+out/

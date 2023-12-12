@@ -3,7 +3,7 @@
 #include "Parser.h"
 #include <iostream>
 #include <fstream>
-#include "Instruction.h"
+#include "../CarbonCommonLib/Instruction.h"
 
 void Carbon::CompileStream(std::istream& stream, InstructionWriter& Output)
 {
