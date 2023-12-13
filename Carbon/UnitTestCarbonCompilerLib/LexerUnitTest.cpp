@@ -1,8 +1,7 @@
 #include "stdafx.h"
-#include "CppUnitTest.h"
 #include "../CarbonCompilerLib/Lexer.h"
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+using namespace FRAMEWORK;
 
 namespace UnitTestCarbonCompilerLib
 {		
@@ -213,6 +212,31 @@ namespace UnitTestCarbonCompilerLib
 			Lexing("")
 				.CheckCurrentToken(Token::FileBegin)
 				.Expect(Token::FileEnd);
+		}
+
+		void TestAll() {
+			RUN_TEST_METHOD(LexerWhitespace);
+			RUN_TEST_METHOD(LexerNumber);
+			RUN_TEST_METHOD(LexerNumberFloat);
+			RUN_TEST_METHOD(LexerNumberFloatWithExponent);
+			RUN_TEST_METHOD(LexerNumberFloatWithExponentPlus);
+			RUN_TEST_METHOD(LexerNumberFloatWithExponentMinus);
+			RUN_TEST_METHOD(LexerNumberHexadecimal);
+			RUN_TEST_METHOD(LexerNumberOctal);
+			RUN_TEST_METHOD(LexerNumberBinary);
+			RUN_TEST_METHOD(LexerNumberSequence);
+			RUN_TEST_METHOD(LexerIdentifiers);
+			RUN_TEST_METHOD(LexerTokenPositions);
+			RUN_TEST_METHOD(LexerStringBasic);
+			RUN_TEST_METHOD(LexerStringWithEscape);
+			RUN_TEST_METHOD(LexerStringsMultiple);
+			RUN_TEST_METHOD(LexerStringTypes);
+			RUN_TEST_METHOD(LexerKeywords);
+			RUN_TEST_METHOD(LexerOperators);
+			RUN_TEST_METHOD(LexerSyntaxSymbols);
+			RUN_TEST_METHOD(LexerSyntaxTestAssignment);
+			RUN_TEST_METHOD(LexerSyntaxTestFunction);
+			RUN_TEST_METHOD(LexerFileBeginEnd);
 		}
 
 	private:

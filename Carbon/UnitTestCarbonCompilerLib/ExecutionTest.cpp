@@ -6,7 +6,7 @@
 #include "../CarbonCompilerLib/Compiler.h"
 #include "../CarbonCoreLib/Executor.h"
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+using namespace FRAMEWORK;
 
 namespace UnitTestCarbonCompilerLib
 {
@@ -91,6 +91,26 @@ namespace UnitTestCarbonCompilerLib
 		TEST_METHOD(DeepMemberAccess) 
 		{
 			Executing("a={};a.x={};a.x.y=2;a.x.y*2;").HasIntegerResult(4);
+		}
+
+		TEST_ALL_METHOD()
+		{
+			RUN_TEST_METHOD(EmptyReturnShouldNotFail);
+			RUN_TEST_METHOD(ReturningIntegerValue);
+			RUN_TEST_METHOD(ArithmeticOperatorOrderShouldBeRespected);
+			RUN_TEST_METHOD(LocalVariableInitializerHasAccessToGlobalFunctions);
+			RUN_TEST_METHOD(ComparingVoidWithIntegerIsFalse);
+			RUN_TEST_METHOD(ComparingIntegerWithVoidIsFalse);
+			RUN_TEST_METHOD(SemicolonOptionalBeforeClosingBracket);
+			RUN_TEST_METHOD(SemicolonOptionalAfterClosingBracket);
+			RUN_TEST_METHOD(SemicolonOptionalAfterLastStatement);
+			RUN_TEST_METHOD(ObjectNotationCreatesNewObjects);
+			RUN_TEST_METHOD(FunctionExpressionMostBasicForm);
+			RUN_TEST_METHOD(FunctionExpressionMultiParams);
+			RUN_TEST_METHOD(FunctionExpressionWithBody);
+			RUN_TEST_METHOD(OperatorOrderSpecifiedThroughParanthesis);
+			RUN_TEST_METHOD(CanSetMemberOfObject);
+			RUN_TEST_METHOD(DeepMemberAccess);
 		}
 
 

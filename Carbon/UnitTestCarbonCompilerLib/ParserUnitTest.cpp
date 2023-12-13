@@ -2,7 +2,7 @@
 #include "../CarbonCompilerLib/Lexer.h"
 #include "../CarbonCompilerLib/Parser.h"
 
-using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+using namespace FRAMEWORK;
 
 namespace UnitTestCarbonCompilerLib
 {
@@ -526,6 +526,48 @@ namespace UnitTestCarbonCompilerLib
 				.Expect(Type::FUNCTION_OPERATOR)
 				.Expect(Type::END_STATEMENT)
 				.ExpectEndOfFile();
+		}
+
+		TEST_ALL_METHOD()
+		{
+			RUN_TEST_METHOD(ParserEmptyProgram);
+			RUN_TEST_METHOD(ParserEmptyProgramEmptyStatements);
+			RUN_TEST_METHOD(ParserExpressionAssignment);
+			RUN_TEST_METHOD(ParserExpressionOpPriority);
+			RUN_TEST_METHOD(ParserExpressionSubExpression);
+			RUN_TEST_METHOD(ParserExpressionSubSub);
+			RUN_TEST_METHOD(ParserExpressionError);
+			RUN_TEST_METHOD(ParserUnaryMinus);
+			RUN_TEST_METHOD(ParserUnaryPlus);
+			RUN_TEST_METHOD(ParserExpressionObjectSimple);
+			RUN_TEST_METHOD(ParserExpressionObject);
+			RUN_TEST_METHOD(ParserExpressionArraySimple);
+			RUN_TEST_METHOD(ParserExpressionArray);
+			RUN_TEST_METHOD(ParserFunctionCallSimple);
+			RUN_TEST_METHOD(ParserFunctionCallParams);
+			RUN_TEST_METHOD(ParserFunctionCallExpression);
+			RUN_TEST_METHOD(ParserFunctionParameterless);
+			RUN_TEST_METHOD(ParserFunction);
+			RUN_TEST_METHOD(ParserEndStatementOptionalAfterFunctionClosingBraces);
+			RUN_TEST_METHOD(ParserFunctionMultiParam);
+			RUN_TEST_METHOD(ParserLocal);
+			RUN_TEST_METHOD(ParserLocalAssign);
+			RUN_TEST_METHOD(ParserMemberAssign);
+			RUN_TEST_METHOD(ParserBreakSimple);
+			RUN_TEST_METHOD(ParserContinueSimple);
+			RUN_TEST_METHOD(ParserReturnSimple);
+			RUN_TEST_METHOD(ParserReturnExpression);
+			RUN_TEST_METHOD(ParserIfSimple);
+			RUN_TEST_METHOD(ParserIfElseSimple);
+			RUN_TEST_METHOD(ParserIfElseBlock);
+			RUN_TEST_METHOD(ParserLoopSimple);
+			RUN_TEST_METHOD(ParserLoop1);
+			RUN_TEST_METHOD(ParserLoop2);
+			RUN_TEST_METHOD(ParserLoop3);
+			RUN_TEST_METHOD(ReturnWithoutParams);
+			RUN_TEST_METHOD(ReturnWithSingleParameter);
+			RUN_TEST_METHOD(FunctionOperator);
+			RUN_TEST_METHOD(FunctionOperatorWithFunctionBody);
 		}
 
 	private:
