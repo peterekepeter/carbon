@@ -18,19 +18,19 @@ files=(
 )
 
 compiler='zig c++'
+compiler=echo
 compile="$compiler ${files[@]} -O3"
 
-if [ $1 = "multitarget" ]; then
+if [ "$1" == "multitarget" ]; then
     # list of supported targets
     targets=(
         x86_64-linux
-        arm-linux
-        aarch64-linux
-        i386-linux
+        # arm-linux
+        # aarch64-linux
+        # i386-linux
         x86_64-windows
-        arm-windows
-        aarch64-windows
-        i386-windows
+        # arm-windows
+        # aarch64-windows
     )
     # compile all targets
     for i in "${targets[@]}"
