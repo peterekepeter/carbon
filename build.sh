@@ -17,5 +17,32 @@ files=(
     ./Carbon/CarbonCommonLib/Instruction.cpp
 )
 
+compiler='zig c++'
+compile="$compiler ${files[@]} -O3"
 
-zig c++ ${files[@]} -o out/carbon -O3
+if [ $1 = "multitarget" ]; then
+    # list of supported targets
+    targets=(
+        x86_64-linux
+        arm-linux
+        aarch64-linux
+        i386-linux
+        x86_64-windows
+        arm-windows
+        aarch64-windows
+        i386-windows
+    )
+    # compile all targets
+    for i in "${targets[@]}"
+    do
+        # add .exe extension on windows
+        outfile="co2-$i"
+        if [[ $i =~ "windows" ]]; then
+            outfile="$outfile.exe"
+        fi
+        $compile -target $i -o out/$outfile
+    done
+else 
+    # current os only
+    $compile -o out/co2
+fi

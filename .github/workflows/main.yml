@@ -20,13 +20,11 @@ jobs:
         use-cache: true
 
     - name: Build
-      run: bash ./build.sh
+      run: bash ./build.sh multitarget
 
     - name: Test
       run: bash ./test.sh
       
     - uses: actions/upload-artifact@v4.4.3
       with:
-        path: ./out/carbon
-
-  
+        path: ./out/
