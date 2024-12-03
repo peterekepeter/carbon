@@ -8,17 +8,13 @@ on:
 
 jobs:
   build:
-    runs-on: windows-2019
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
 
     - name: Build
-      run: |
-        $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE"
-        devenv Carbon/Carbon.sln /build
+      run: build.sh
 
     - name: Test
-      run: |
-        $env:Path += ";C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\Extensions\TestPlatform"
-        vstest.console Carbon/Debug/UnitTestCarbonCompilerLib.dll
+      run: test.sh
