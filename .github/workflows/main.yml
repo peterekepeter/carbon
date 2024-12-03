@@ -20,10 +20,10 @@ jobs:
         use-cache: true
 
     - name: Build
-      run: ./build.sh
+      run: bash ./build.sh
 
     - name: Test
-      run: ./test.sh
+      run: bash ./test.sh
       
     - uses: actions/upload-artifact@v4.4.3
       with:
