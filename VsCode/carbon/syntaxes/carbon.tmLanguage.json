@@ -12,10 +12,21 @@
 			"include": "#numeric"
 		},
 		{
+			"include": "#functioncall"
+		},
+		{
 			"include": "#identifier"
 		}
 	],
 	"repository": {
+		"functioncall":{
+			"patterns": [
+				{
+					"name": "entity.name.function",
+					"match": "[_a-zA-Z][_0-9a-zA-Z]*(?=\\s*\\()"
+				}
+			]
+		},
 		"identifier":{
 			"patterns": [
 				{
