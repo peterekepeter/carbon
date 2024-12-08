@@ -103,6 +103,11 @@ namespace UnitTestCarbonCompilerLib
 			Executing("integer(\"123456789123456789\");").HasIntegerResult(123456789123456789);
 		}
 
+		TEST_METHOD(ArrayOfObjectConstruction)
+		{
+			Executing("get([{}],0)").HasObjectResult();
+		}
+
 		TEST_ALL_METHOD()
 		{
 			RUN_TEST_METHOD(EmptyReturnShouldNotFail);
@@ -123,6 +128,7 @@ namespace UnitTestCarbonCompilerLib
 			RUN_TEST_METHOD(DeepMemberAccess);
 			RUN_TEST_METHOD(ParseLargeInteger);
 			RUN_TEST_METHOD(CastLargeInteger);
+			RUN_TEST_METHOD(ArrayOfObjectConstruction);
 		}
 
 

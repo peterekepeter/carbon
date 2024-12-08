@@ -18,7 +18,6 @@ files=(
 )
 
 compiler='zig c++'
-compiler=echo
 compile="$compiler ${files[@]} -O3"
 
 if [ "$1" == "multitarget" ]; then

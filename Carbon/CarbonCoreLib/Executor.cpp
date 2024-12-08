@@ -394,8 +394,9 @@ namespace Carbon {
 				imp->stack.push(node);
 				break;
 			case InstructionType::ARRAYEND: {
-				auto arrayNode = std::make_shared<NodeArray>();
-				auto& vector = arrayNode->Vector;
+				auto arrayNode = std::make_shared<NodeStructureFactory>();
+				arrayNode->IsArrayFactory = true;
+				auto& vector = arrayNode->Expressions;
 				bool finished = false;
 				while(!finished) {
 					auto& top = imp->stack.top();
