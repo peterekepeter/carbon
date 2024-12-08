@@ -179,7 +179,7 @@ namespace Carbon {
 	void Executor::WriteInstruction(InstructionType type, const char* text) {
 		switch (type) {
 			case InstructionType::NUM:
-				imp->stack.push(std::make_shared<NodeInteger>(atol(text)));
+				imp->stack.push(std::make_shared<NodeInteger>(atoll(text)));
 				break;
 			case InstructionType::ONUM:
 				imp->stack.push(std::make_shared<NodeInteger>(std::stoi(text, nullptr,8)));
@@ -1850,7 +1850,7 @@ namespace Carbon {
 						break;
 					case NodeType::Bit: ival = (long long)reinterpret_cast<NodeBit&>(*node[0]).Value;
 						break;
-					case NodeType::String: ival = (long long)atol(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
+					case NodeType::String: ival = (long long)atoll(reinterpret_cast<NodeString&>(*node[0]).Value.c_str());
 						break;
 					case NodeType::Bits: ival = *((long long*) reinterpret_cast<NodeBits&>(*node[0]).Value.address());
 						break;
