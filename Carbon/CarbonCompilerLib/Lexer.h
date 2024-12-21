@@ -22,6 +22,9 @@ namespace Carbon
 		// get the indetified token data, like "Hello Wolrd"
 		const char* GetData();
 
+		// get a printable hardcoded string for the current token type
+		const char* GetTokenStr();
+
 		// get token start line
 		int GetLine(); 
 
@@ -42,7 +45,7 @@ namespace Carbon
 		void ParseIdOrString();
 		void ParseString();
 		void ParseWhitespace();
-		void ParseOperator();
+		bool ParseOperator();
 		Token DetectKeyword(const std::string& data);
 		void StartToken();
 		int lineCounter, positionCounter, tokenStartPosition, tokenStartLine;

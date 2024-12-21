@@ -3,6 +3,10 @@
 	"name": "carbon",
 	"patterns": [
 		{
+			"name": "comment.line",
+			"match": "//[^\n]+"
+		},
+		{
 			"include": "#keywords"
 		},
 		{
@@ -50,7 +54,7 @@
 		"keywords": {
 			"patterns": [{
 				"name": "keyword.control.carbon",
-				"match": "\\b(function|local|loop|else|break|contine|return|if)\\b"
+				"match": "\\b(function|local|loop|else|break|continue|return|if)\\b"
 			}]
 		},
 		"strings": {

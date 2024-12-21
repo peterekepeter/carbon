@@ -16,6 +16,12 @@ namespace UnitTestCarbonCompilerLib
 				.Expect(Token::FileEnd);
 		}
 
+		TEST_METHOD(LexerLineComment)
+		{
+			Lexing("//a=0")
+				.Expect(Token::FileEnd);
+		}
+
 		TEST_METHOD(LexerNumber)
 		{
 			Lexing("13")
@@ -216,6 +222,7 @@ namespace UnitTestCarbonCompilerLib
 
 		void TestAll() {
 			RUN_TEST_METHOD(LexerWhitespace);
+			RUN_TEST_METHOD(LexerLineComment);
 			RUN_TEST_METHOD(LexerNumber);
 			RUN_TEST_METHOD(LexerNumberFloat);
 			RUN_TEST_METHOD(LexerNumberFloatWithExponent);

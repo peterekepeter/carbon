@@ -319,7 +319,7 @@ void Carbon::Lexer::ParseWhitespace()
 	}
 }
 
-void Carbon::Lexer::ParseOperator()
+bool Carbon::Lexer::ParseOperator()
 {
 	// first char peek
 	auto continueParsing = false;
@@ -349,6 +349,7 @@ void Carbon::Lexer::ParseOperator()
 		break;
 	case '/':
 		token = Token::Divide;
+		continueParsing = true; // might be //
 		break;
 	case '.':
 		token = Token::Member;
@@ -396,13 +397,21 @@ void Carbon::Lexer::ParseOperator()
 	if (!continueParsing)
 	{
 		// single char operators exit here
-		return;
+		return false; // stop parsing at token end
 	}
 	// second char for two char operators
 	continueParsing = false;
 	auto acceptSecond = true;
 	switch (input.peek())
 	{
+	case '/':
+		if (token == Token::Divide) {
+			token = Token::CommentLine;
+		}
+		else {
+			// stay on divide
+		}
+		break;
 	case '>': 
 		if (token == Token::Minus) {
 			token = Token::FunctionOperator;
@@ -435,12 +444,25 @@ void Carbon::Lexer::ParseOperator()
 	if (acceptSecond) 
 	{
 		positionCounter += 1;
-		input.get();
+		auto chr = input.get();
+		if (token == Token::CommentLine)
+		{
+			// take all chars until end of line
+			while (chr != '\n') {
+				positionCounter += 1;
+				chr = input.get();
+				chr = input.peek();
+				if (chr < 0) {
+					break; // eof
+				}
+			}
+			return true; // continue parsing (basically skip this token)
+		}
 	}
 	if (!continueParsing) 
 	{
 		// operators with 1 or 2 chars exit here
-		return;
+		return false; // stop parsing and return token
 	}
 	// if required continue here for 3 char operators
 	throw MakeError("Invalid lexer state");
@@ -560,8 +582,7 @@ void Carbon::Lexer::MoveNext()
 		case '[': case ']': case '.': case ',':
 		case ';': case ':':
 			StartToken();
-			ParseOperator();
-			parsing = false;
+			parsing = ParseOperator();
 			break;
 
 		case '\f':

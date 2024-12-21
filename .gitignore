@@ -23,4 +23,7 @@ bld/
 *.VC.db
 *.user
 
+# packaged vs code extensions
+*.vsix
+
 out/

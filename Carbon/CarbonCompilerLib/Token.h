@@ -22,6 +22,9 @@ namespace Carbon
 		NumberOctal,
 		Number,
 
+		// comments
+		CommentLine,
+
 		// syntax symbols
 
 		ParanthesisOpen,
