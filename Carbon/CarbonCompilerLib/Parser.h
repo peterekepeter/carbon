@@ -171,8 +171,7 @@ namespace Carbon
 		std::stack<Op> opStack;
 		Token tempToken;
 		std::string tempBuffer;
-		bool expressionPrevAtom;
-		bool expressionPrevOp;
+		bool m_emptyparenexpr;
 
 		// signals the lexer should be advanced
 		bool consumeToken = false;

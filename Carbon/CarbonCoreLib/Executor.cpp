@@ -205,8 +205,11 @@ namespace Carbon {
 			case InstructionType::BSTR:
 				imp->stack.push(std::make_shared<NodeBits>(ParseBSTR(text)));
 				break;
-			default:
+			case InstructionType::ID:
 				imp->stack.push(std::make_shared<NodeAtom>(type, text));
+				break;
+			default:
+				throw ExecutorImplementationException("Command needs no arg."); 
 				break;
 		}
 
@@ -231,6 +234,9 @@ namespace Carbon {
 	}
 
 	void FlattenCommaExpressionToFunctionParams(const std::shared_ptr<Node>& expr, std::vector<std::string>& outp) {
+		if (expr->IsNone()) {
+			return;
+		}
 		if (expr->IsAtom() && expr->GetAtomType() == InstructionType::ID) {
 			outp.push_back(expr->GetAtomText());
 		}
@@ -243,12 +249,16 @@ namespace Carbon {
 		else throw ExecutorRuntimeException("invalid function parameter");
 	}
 
+	// instructions that  do not have argument
 	void Executor::WriteInstruction(InstructionType cmd) {
 		//transform into tree
 		auto node = std::make_shared<NodeCommand>(cmd);
 		if (imp->VERBOSE_SUBMIT)
 			printf("CMD %s\n", node->GetText());
 		switch (cmd) {
+			case InstructionType::VOIDEXPR:
+				imp->stack.push(std::make_shared<Node>(NodeType::None));
+				break;
 			case InstructionType::ASSIGN:
 			case InstructionType::ADD:
 			case InstructionType::SUBTRACT:
@@ -266,8 +276,9 @@ namespace Carbon {
 				node->Children.resize(2);
 				node->Children[1] = imp->ReplaceIdIfPossible(imp->stack.top());
 				imp->stack.pop();
-				node->Children[0] = (cmd == InstructionType::ASSIGN) ?
-					                    imp->stack.top() : imp->ReplaceIdIfPossible(imp->stack.top());
+				node->Children[0] = (cmd == InstructionType::ASSIGN) 
+					? imp->stack.top() 
+					: imp->ReplaceIdIfPossible(imp->stack.top());
 				imp->stack.pop();
 				imp->stack.push(imp->OptimizeIfPossible(node));
 				break;
@@ -346,11 +357,11 @@ namespace Carbon {
 			case InstructionType::FUNCTION_OPERATOR: {
 				auto fimpl = imp->stack.top();
 				imp->stack.pop();
-				auto params = imp->stack.top();
+				auto p = imp->stack.top();
 				imp->stack.pop();
 				std::vector<std::string> plist;
-				if (params->IsAtom() || params->IsCommand() && params->GetCommandType() == InstructionType::COMMA) {
-					FlattenCommaExpressionToFunctionParams(params, plist);
+				if (p->IsNone() || p->IsAtom() || p->IsCommand() && p->GetCommandType() == InstructionType::COMMA) {
+					FlattenCommaExpressionToFunctionParams(p, plist);
 				}
 				else throw ExecutorImplementationException("invalid function syntax");
 				imp->stack.push(std::make_shared<NodeFunction>(plist, fimpl));
@@ -1221,6 +1232,9 @@ namespace Carbon {
 				auto& idx = reinterpret_cast<NodeAtom&>(*index).AtomText;
 				object.SetAttributeValue(idx, rvalue);
 				return rvalue;
+			}
+			else {
+				printf("CT %d\n", lvalue->GetCommandType());
 			}
 			throw ExecutorRuntimeException("left side of an assignment must be an identifier");
 		} else throw ExecutorImplementationException("Assignment requires 2 parameters.");

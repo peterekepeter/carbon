@@ -52,6 +52,7 @@ namespace Carbon
 		FUNCTIONEND,
 		FUNCTION_OPERATOR,
 		COMMA,
+		VOIDEXPR,
 
 		// it is assumed that all types ater ID require string data
 		ID,   

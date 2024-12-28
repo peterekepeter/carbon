@@ -55,6 +55,11 @@ namespace Carbon
 		}
 	}
 
+	bool Node::IsNone() const
+	{
+		return Type == NodeType::None;
+	}
+
 	bool Node::IsAtom() const
 	{
 		return Type == NodeType::Atom;
@@ -129,7 +134,10 @@ namespace Carbon
 		case InstructionType::RETURN1: return "RETURN1";
 		case InstructionType::FUNCTION_OPERATOR: return "FUNCTION_OPERATOR";
 		case InstructionType::COMMA: return "COMMA";
-		default: throw ExecutorImplementationException("Unhandled commandtype.");
+		case InstructionType::VOIDEXPR: return "VOIDEXPR";
+		default: {
+			throw ExecutorImplementationException("Unhandled commandtype.");
+		}
 		}
 	}
 

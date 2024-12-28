@@ -41,7 +41,11 @@ if [ "$1" == "multitarget" ]; then
         fi
         $compile -target $i -o out/$outfile
     done
-else 
+else
     # current os only
     $compile -o out/co2
+fi
+
+if [ "$1" == "run" ]; then
+    ./out/co2
 fi

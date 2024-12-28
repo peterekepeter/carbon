@@ -113,6 +113,11 @@ namespace UnitTestCarbonCompilerLib
 			Executing("a=0;//a=1\na*2").HasIntegerResult(0);
 		}
 
+		TEST_METHOD(ArrowFunctionWithEmptyParamList)
+		{
+			Executing("f=()->1;f()").HasIntegerResult(1);
+		}
+
 		TEST_ALL_METHOD()
 		{
 			RUN_TEST_METHOD(EmptyReturnShouldNotFail);
@@ -135,6 +140,7 @@ namespace UnitTestCarbonCompilerLib
 			RUN_TEST_METHOD(CastLargeInteger);
 			RUN_TEST_METHOD(ArrayOfObjectConstruction);
 			RUN_TEST_METHOD(LineCommentsAreIgnored);
+			RUN_TEST_METHOD(ArrowFunctionWithEmptyParamList);
 		}
 
 

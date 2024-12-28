@@ -1187,8 +1187,7 @@ bool Carbon::Parser::ParseExpression()
 		{
 			opStack.push(Op::Paranthesis);
 			consumeToken = true; // consume token
-			expressionPrevAtom = false;
-			expressionPrevOp = false;
+			m_emptyparenexpr = true;
 			return true; // continue parsing
 		}
 		return true;
@@ -1202,9 +1201,10 @@ bool Carbon::Parser::ParseExpression()
 		if (opStack.top() == Op::Term)
 		{
 			// yep, term was the last token in expression, this is pretty normal
+			m_emptyparenexpr = false;
 			opStack.pop();
 		}
-		// check for for ending function call
+		// check for ending function call
 		if (opStack.top() == Op::FunctionCall)
 		{
 			consumeToken = true; // consume token
@@ -1218,6 +1218,11 @@ bool Carbon::Parser::ParseExpression()
 			consumeToken = true; // consume token
 			opStack.pop();
 			opStack.push(Op::Term);
+			if (m_emptyparenexpr) {
+				// yield empty expression
+				instruction = InstructionType::VOIDEXPR;
+				return false;
+			}
 			return true; // continue parsing
 		}
 		// end of subexpression
@@ -1231,6 +1236,7 @@ bool Carbon::Parser::ParseExpression()
 		else {
 			instruction = OpToInstructionType(opStack.top());
 			opStack.pop();
+			m_emptyparenexpr = false;
 			return false; // yield operator
 		}
 		return true;

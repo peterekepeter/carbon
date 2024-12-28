@@ -36,6 +36,7 @@ namespace Carbon
 
 	class Node {
 	public:
+		bool IsNone() const;
 		bool IsAtom() const;
 		bool IsCommand() const;
 		NodeType GetNodeType() const;
